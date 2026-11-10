@@ -1,0 +1,24 @@
+{
+  "name": "kk-digital-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "KK Digital Studio – full-stack photography studio website with centralized admin panel",
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently -n api,web -c green,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "seed": "npm --prefix server run seed",
+    "seed:demo": "npm --prefix server run seed -- --demo-prices",
+    "create-admin": "npm --prefix server run create-admin"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=18.18"
+  },
+  "dependencies": {
+    "kk-digital-studio": "file:"
+  }
+}

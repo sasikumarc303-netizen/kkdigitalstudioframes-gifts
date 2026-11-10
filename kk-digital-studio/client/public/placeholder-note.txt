@@ -1,0 +1,4 @@
+Static assets in this folder are served from the site root:
+  /videos/hero.mp4, /videos/hero-mobile.mp4   – hero loops made from your supplied camera commercial
+  /videos/Camera_commercial_video_rotation_cae5961b.mp4 – your original file, untouched
+  /images/*  – posters and stills extracted from that video

@@ -1,0 +1,19 @@
+{
+  "name": "kk-digital-studio-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Workspace entry point for the KK Digital Studio application",
+  "scripts": {
+    "postinstall": "npm run install:all",
+    "install:all": "npm --prefix kk-digital-studio run install:all",
+    "dev": "npm --prefix kk-digital-studio run dev",
+    "build": "npm --prefix kk-digital-studio run build",
+    "start": "npm --prefix kk-digital-studio start",
+    "seed": "npm --prefix kk-digital-studio run seed",
+    "seed:demo": "npm --prefix kk-digital-studio run seed:demo",
+    "create-admin": "npm --prefix kk-digital-studio run create-admin"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}
