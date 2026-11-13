@@ -234,11 +234,18 @@ server {
 Then add a certificate with Let’s Encrypt (`certbot --nginx`). `TRUST_PROXY` and `COOKIE_SECURE` are on by default in production.
 
 ### Platform-as-a-service (Render, Railway, etc.)
+- For this repository, create a **Render Web Service** with **Root Directory** `kk-digital-studio`.
 - Build command: `npm run install:all && npm run build`
 - Start command: `npm start`
-- Set the environment variables from `.env.example` in the platform dashboard.
+- The backend package manifest is `server/package.json`; its `start` script runs `node server.js` from `server/`. The parent package's `npm start` script invokes it and is the recommended Render start command.
+- Set `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRET`, and `SITE_URL` in Render's environment settings. Render supplies `PORT`. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` only when creating the first admin, then remove those variables.
+- Use an Atlas URI in the form `mongodb+srv://<db-user>:<url-encoded-password>@<cluster-host>/kk-digital-studio?retryWrites=true&w=majority`. URL-encode special characters in the database password and allow Render's outbound IPs in the Atlas network access list.
+- Set other values from `.env.example` in the platform dashboard as needed. Never copy secrets into source files or commit `.env`.
 - Use **MongoDB Atlas** and **Cloudinary**: most platforms have ephemeral disks, so local uploads would be lost on redeploy.
 - Run `npm run seed` once from the platform shell.
+
+### Netlify
+This application is configured as a same-origin full-stack app: the frontend calls `/api`, and Express serves both the API and `client/dist`. Deploying the static client alone to Netlify will send `/api` requests to Netlify and can return 404s; client-side routes also need an SPA fallback. Use the Render Web Service above as the production deployment. If you specifically want Netlify in front, configure Netlify proxy rules for `/api/*` (and `/uploads/*` if needed) to your actual Render service URL, plus an SPA fallback, and set `CLIENT_URL` to the Netlify origin in Render. Do not use a placeholder service URL or expose database/JWT/admin credentials in the client build.
 
 ### Backups & updates
 Back up the MongoDB database regularly (Atlas has built-in backups). To update: pull the new code, `npm run install:all`, `npm run build`, restart.
@@ -281,7 +288,7 @@ kk-digital-studio/
 │     │  └─ pages/              login / reset / account
 │     ├─ services/              api client, formatting helpers
 │     └─ styles/                design tokens + layout/component/page CSS
-└─ server/                      Express + MongoDB
+└─ server/                      Express + MongoDB (`server/package.json`)
    ├─ config/                   env, db, constants
    ├─ models/                   Mongoose schemas
    ├─ controllers/              request handlers
