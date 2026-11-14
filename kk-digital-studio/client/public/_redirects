@@ -1,2 +1,4 @@
+# Static SEO files are published from this directory; keep the API proxy before the SPA fallback.
 /api/*  https://kk-digital-studio-backend.onrender.com/api/:splat  200
+# Non-forced fallback: existing static files (including sitemap.xml and robots.txt) take precedence.
 /*  /index.html  200

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../services/api.js';
 import { money as fmtMoney } from '../services/format.js';
+import { DEFAULT_CONFIG } from '../../../server/services/defaults.js';
 
 const SiteContext = createContext(null);
 export const useSite = () => useContext(SiteContext);
@@ -8,14 +9,14 @@ export const useSite = () => useContext(SiteContext);
 const digits = (s) => String(s || '').replace(/\D/g, '');
 
 export function SiteProvider({ children }) {
-  const [state, setState] = useState({ config: null, payment: null, error: null, loading: true });
+  const [state, setState] = useState({ config: DEFAULT_CONFIG, payment: null, error: null, loading: true });
 
   const load = useCallback(() => {
     setState((s) => ({ ...s, loading: true, error: null }));
     return api
       .get('/site')
       .then(({ config, payment }) => setState({ config, payment, error: null, loading: false }))
-      .catch((error) => setState({ config: null, payment: null, error, loading: false }));
+      .catch((error) => setState({ config: DEFAULT_CONFIG, payment: null, error, loading: false }));
   }, []);
 
   useEffect(() => {

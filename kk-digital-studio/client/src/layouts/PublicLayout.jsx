@@ -5,7 +5,6 @@ import Header from '../components/Header.jsx';
 import Footer from '../components/Footer.jsx';
 import WhatsAppFloat from '../components/WhatsAppFloat.jsx';
 import Seo from '../components/Seo.jsx';
-import { Btn } from '../components/Buttons.jsx';
 import { SiteProvider, useSite } from '../context/SiteContext.jsx';
 import { CartProvider } from '../context/CartContext.jsx';
 import { ToastProvider } from '../components/Toast.jsx';
@@ -19,21 +18,13 @@ function ScrollToTop() {
 }
 
 function Shell() {
-  const { config, loading, error, reload } = useSite();
+  const { config, loading } = useSite();
   const { pathname } = useLocation();
   const outlet = useOutlet();
   const reduce = useReducedMotion();
 
   if (loading && !config) return <div className="splash" role="status" aria-label="Loading"><span className="splash__mark">KK</span></div>;
-  if (error || !config) {
-    return (
-      <div className="splash splash--error">
-        <h1>We’ll be right back</h1>
-        <p>{error?.message || 'The website could not be loaded.'}</p>
-        <Btn onClick={reload}>Try again</Btn>
-      </div>
-    );
-  }
+  if (!config) return <div className="splash splash--error"><h1>We’ll be right back</h1><p>The website could not be loaded.</p></div>;
 
   return (
     <>

@@ -1,55 +1,139 @@
-const BASE = '/api';
+
+const API_ORIGIN = 'https://kk-digital-studio-backend.onrender.com';
+
+const PROXY_BASE = '/api';
+const DIRECT_BASE = `${API_ORIGIN}/api`;
+
+let lastWakeTime = 0;
+let wakePromise = null;
 
 export const qs = (params = {}) => {
   const p = new URLSearchParams();
+
   Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') p.set(k, v);
+    if (v !== undefined && v !== null && v !== '') {
+      p.set(k, v);
+    }
   });
+
   const s = p.toString();
   return s ? `?${s}` : '';
 };
 
+// Wake Render before using the Netlify admin proxy.
+async function wakeBackend() {
+  if (!import.meta.env.PROD) return;
+
+  if (Date.now() - lastWakeTime < 10 * 60 * 1000) {
+    return;
+  }
+
+  if (!wakePromise) {
+    wakePromise = fetch(`${API_ORIGIN}/api/site`, {
+      method: 'GET',
+      mode: 'no-cors',
+      credentials: 'omit',
+      cache: 'no-store',
+    })
+      .then(() => {
+        lastWakeTime = Date.now();
+      })
+      .finally(() => {
+        wakePromise = null;
+      });
+  }
+
+  return wakePromise;
+}
+
 async function request(path, { method = 'GET', body, formData } = {}) {
+  const isAdmin = path.startsWith('/admin');
+
   const headers = {};
-  if (!formData) headers['Content-Type'] = 'application/json';
-  // Custom header required by the server for state-changing admin calls (CSRF protection).
-  if (path.startsWith('/admin')) headers['X-Requested-With'] = 'kk-admin';
+
+  if (!formData && body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  // Preserve the existing admin CSRF protection.
+  if (isAdmin) {
+    headers['X-Requested-With'] = 'kk-admin';
+  }
+
+  const base =
+    import.meta.env.DEV || isAdmin
+      ? PROXY_BASE
+      : DIRECT_BASE;
+
   let res;
+
   try {
-    res = await fetch(BASE + path, {
+    if (isAdmin && import.meta.env.PROD) {
+      try {
+        await wakeBackend();
+      } catch {
+        // Still attempt the original API request.
+      }
+    }
+
+    res = await fetch(base + path, {
       method,
       headers,
-      credentials: 'include',
-      body: formData || (body !== undefined ? JSON.stringify(body) : undefined),
+      credentials: isAdmin ? 'include' : 'omit',
+      body: formData || (
+        body !== undefined ? JSON.stringify(body) : undefined
+      ),
     });
   } catch {
-    const err = new Error('Cannot reach the server. Please check your connection and try again.');
+    const err = new Error(
+      'Cannot reach the server. Please wait and try again.'
+    );
     err.network = true;
     throw err;
   }
+
   let data = null;
+
   try {
     data = await res.json();
   } catch {
-    /* empty body */
+    // Empty or non-JSON response.
   }
+
   if (!res.ok) {
-    const err = new Error(data?.message || `Request failed (${res.status})`);
+    const err = new Error(
+      data?.message || `Request failed (${res.status})`
+    );
+
     err.status = res.status;
     err.errors = data?.errors || {};
-    if (res.status === 401 && path.startsWith('/admin') && !path.startsWith('/admin/auth/login')) {
-      window.dispatchEvent(new CustomEvent('kk:unauthorized'));
+
+    if (
+      res.status === 401 &&
+      isAdmin &&
+      !path.startsWith('/admin/auth/login')
+    ) {
+      window.dispatchEvent(
+        new CustomEvent('kk:unauthorized')
+      );
     }
+
     throw err;
   }
+
   return data;
 }
 
 export const api = {
   get: (p) => request(p),
-  post: (p, body) => request(p, { method: 'POST', body: body ?? {} }),
-  put: (p, body) => request(p, { method: 'PUT', body }),
-  patch: (p, body) => request(p, { method: 'PATCH', body }),
-  del: (p) => request(p, { method: 'DELETE' }),
-  upload: (p, formData) => request(p, { method: 'POST', formData }),
+  post: (p, body) =>
+    request(p, { method: 'POST', body: body ?? {} }),
+  put: (p, body) =>
+    request(p, { method: 'PUT', body }),
+  patch: (p, body) =>
+    request(p, { method: 'PATCH', body }),
+  del: (p) =>
+    request(p, { method: 'DELETE' }),
+  upload: (p, formData) =>
+    request(p, { method: 'POST', formData }),
 };

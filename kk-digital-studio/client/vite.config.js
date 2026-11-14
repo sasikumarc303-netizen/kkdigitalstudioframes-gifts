@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// The API runs separately in development; in production Express serves the built client and the API from one origin.
+// The API runs separately; static SEO files are served by Vite/Netlify without an API round trip.
 const API = process.env.API_URL || 'http://localhost:5000';
 
 export default defineConfig({
@@ -11,8 +11,6 @@ export default defineConfig({
     proxy: {
       '/api': { target: API, changeOrigin: false },
       '/uploads': { target: API, changeOrigin: false },
-      '/sitemap.xml': { target: API, changeOrigin: false },
-      '/robots.txt': { target: API, changeOrigin: false },
     },
   },
   build: {
