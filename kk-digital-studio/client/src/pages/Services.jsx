@@ -25,7 +25,7 @@ export default function Services() {
           {data && data.length > 0 && (
             <div className="service-list">
               {data.map((s, i) => (
-                <article key={s.id} className={`service-row ${i % 2 ? 'service-row--reverse' : ''}`} id={s.slug}>
+                <article key={s.id || s.slug} className={`service-row ${i % 2 ? 'service-row--reverse' : ''}`} id={s.slug}>
                   <ImageReveal className="service-row__media">
                     <Img src={s.image} alt={s.image ? s.title : ''} ratio="4/3" width={900} icon={serviceIcon(s.title)} label={s.title} />
                   </ImageReveal>
@@ -37,13 +37,20 @@ export default function Services() {
                     {s.features.length > 0 && <ul className="ticks">{s.features.map((f) => <li key={f}><Icon name="check" size={16} />{f}</li>)}</ul>}
                     {s.startingPrice && <p className="service-row__price">{s.startingPrice}</p>}
                     <div className="service-row__actions">
-                      <Btn to={`/booking?service=${s.id}`} variant="primary">Book this service</Btn>
+                      <Btn to={s.id ? `/booking?service=${s.id}` : '/contact'} variant="primary">
+                        {s.id ? 'Book this service' : 'Ask about this service'}
+                      </Btn>
                       <Btn variant="outline" onClick={() => setEnquiry(s)}>Enquire</Btn>
                     </div>
                   </Reveal>
                 </article>
               ))}
             </div>
+          )}
+          {data?.some((service) => service.isLocalFallback) && (
+            <p className="muted small" role="status">
+              Showing the studio’s standard service information. Online booking options will be available when the live service list reconnects.
+            </p>
           )}
         </div>
       </section>

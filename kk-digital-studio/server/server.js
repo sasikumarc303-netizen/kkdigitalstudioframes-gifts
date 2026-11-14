@@ -17,6 +17,7 @@ import { UPLOAD_ROOT } from './services/media.js';
 import { getConfig, ensureConfigExists } from './services/siteConfig.js';
 import Product from './models/Product.js';
 import AdminUser from './models/AdminUser.js';
+import { SEO_ORIGIN, SEO_PAGES, SITE_DESCRIPTION } from '../seo.mjs';
 
 const app = express();
 app.disable('x-powered-by');
@@ -47,6 +48,10 @@ if (env.clientOrigins.length) app.use(cors({ origin: env.clientOrigins, credenti
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
+app.use('/api', (_req, res, next) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  next();
+});
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, db: mongoose.connection.readyState === 1 }));
 app.use('/api/admin', adminRoutes);
@@ -69,37 +74,48 @@ if (fs.existsSync(indexFile)) {
 
   async function seoFor(pathname) {
     const cfg = await getConfig();
-    let page = cfg.seo.pages[pathname];
-    if (!page && pathname.startsWith('/photo-frames/')) {
+    let page = { ...(SEO_PAGES[pathname] || {}), ...(cfg.seo.pages[pathname] || {}) };
+    if (!page.title && pathname.startsWith('/photo-frames/')) {
       const key = decodeURIComponent(pathname.split('/')[2] || '');
       const p = await Product.findOne(/^[a-f\d]{24}$/i.test(key) ? { _id: key, published: true } : { slug: key, published: true }).catch(() => null);
       if (p) page = { title: `${p.name} | ${cfg.general.businessName}`, description: p.shortDescription || p.description.slice(0, 160), ogImage: p.images?.[0] || '' };
     }
-    page = page || { title: `${cfg.general.businessName} | ${cfg.general.tagline}`, description: cfg.general.tagline, ogImage: '' };
+    if (!page.title) page.title = `${cfg.general.businessName} | ${cfg.general.tagline}`;
+    if (!page.description) page.description = cfg.general.tagline || SITE_DESCRIPTION;
     const og = abs(page.ogImage || cfg.seo.defaultOgImage);
-    const noindex = pathname.startsWith('/admin') || ['/cart', '/checkout'].includes(pathname);
+    const noindex = pathname.startsWith('/admin') || ['/cart', '/checkout', '/orders'].includes(pathname);
     const ld = {
       '@context': 'https://schema.org',
-      '@type': 'LocalBusiness',
-      name: cfg.general.businessName,
-      url: env.siteUrl,
-      description: cfg.general.tagline,
-      address: cfg.contact.address,
-      ...(cfg.contact.phone ? { telephone: cfg.contact.phone } : {}),
-      ...(og ? { image: og } : {}),
-      sameAs: Object.values(cfg.contact.social).filter(Boolean),
+      '@graph': [
+        {
+          '@type': 'WebSite',
+          name: 'KK Digital Studio',
+          url: `${SEO_ORIGIN}/`,
+          description: SITE_DESCRIPTION,
+        },
+        {
+          '@type': 'Organization',
+          name: 'KK Digital Studio',
+          url: `${SEO_ORIGIN}/`,
+          ...(cfg.general.logo ? { logo: abs(cfg.general.logo) } : {}),
+        },
+      ],
     };
     const head = [
       `<title>${esc(page.title)}</title>`,
       `<meta name="description" content="${esc(page.description)}" />`,
       noindex ? '<meta name="robots" content="noindex,nofollow" />' : '',
-      `<link rel="canonical" href="${esc(env.siteUrl + pathname)}" />`,
+      `<link rel="canonical" href="${esc(`${SEO_ORIGIN}${pathname === '/' ? '/' : pathname}`)}" />`,
       `<meta property="og:type" content="website" />`,
       `<meta property="og:site_name" content="${esc(cfg.general.businessName)}" />`,
       `<meta property="og:title" content="${esc(page.title)}" />`,
       `<meta property="og:description" content="${esc(page.description)}" />`,
+      `<meta property="og:url" content="${esc(`${SEO_ORIGIN}${pathname === '/' ? '/' : pathname}`)}" />`,
       og ? `<meta property="og:image" content="${esc(og)}" />` : '',
       `<meta name="twitter:card" content="summary_large_image" />`,
+      `<meta name="twitter:title" content="${esc(page.title)}" />`,
+      `<meta name="twitter:description" content="${esc(page.description)}" />`,
+      og ? `<meta name="twitter:image" content="${esc(og)}" />` : '',
       cfg.general.favicon ? `<link rel="icon" href="${esc(cfg.general.favicon)}" />` : '',
       `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>`,
     ].filter(Boolean).join('\n    ');
@@ -113,6 +129,9 @@ if (fs.existsSync(indexFile)) {
     try {
       const head = await seoFor(req.path.replace(/\/+$/, '') || '/');
       const html = template.replace(/<title>[\s\S]*?<\/title>/i, '').replace('<!--SEO_HEAD-->', head);
+      if (req.path.startsWith('/admin') || ['/cart', '/checkout', '/orders'].includes(req.path.replace(/\/+$/, '') || '/')) {
+        res.set('X-Robots-Tag', 'noindex, nofollow');
+      }
       res.set('Cache-Control', 'no-cache').type('html').send(html);
     } catch (e) {
       next(e);

@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SEO_ORIGIN } from '../../seo.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const SERVER_ROOT = path.resolve(here, '..');
@@ -36,7 +37,7 @@ export const env = {
   jwtSecret,
   jwtExpiresHours: int(process.env.JWT_EXPIRES_HOURS, 8),
   // Public URL of the site (used for sitemap, absolute links in emails)
-  siteUrl: (process.env.SITE_URL || `http://localhost:${int(process.env.PORT, 5000)}`).replace(/\/+$/, ''),
+  siteUrl: (process.env.SITE_URL || (isProd ? SEO_ORIGIN : `http://localhost:${int(process.env.PORT, 5000)}`)).replace(/\/+$/, ''),
   // Extra origins allowed to call the API with cookies (only needed if the client is hosted on another origin)
   clientOrigins: list(process.env.CLIENT_URL),
   cookieSecure: bool(process.env.COOKIE_SECURE, isProd),

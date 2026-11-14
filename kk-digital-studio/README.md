@@ -245,7 +245,9 @@ Then add a certificate with Let’s Encrypt (`certbot --nginx`). `TRUST_PROXY` a
 - Run `npm run seed` once from the platform shell.
 
 ### Netlify
-This application is configured as a same-origin full-stack app: the frontend calls `/api`, and Express serves both the API and `client/dist`. Deploying the static client alone to Netlify will send `/api` requests to Netlify and can return 404s; client-side routes also need an SPA fallback. Use the Render Web Service above as the production deployment. If you specifically want Netlify in front, configure Netlify proxy rules for `/api/*` (and `/uploads/*` if needed) to your actual Render service URL, plus an SPA fallback, and set `CLIENT_URL` to the Netlify origin in Render. Do not use a placeholder service URL or expose database/JWT/admin credentials in the client build.
+For a Netlify frontend with the Render backend, set **Base directory** to `kk-digital-studio/client`, **Build command** to `npm run build`, and **Publish directory** to `dist`. The checked-in `client/public/_redirects` proxies `/api/*` to the Render service before the SPA fallback; static files such as `sitemap.xml` and `robots.txt` are published directly. `client/public/_headers` sets their response types and prevents indexing private routes. The build also writes distinct metadata-bearing HTML shells for each fixed public route, so sitemap and metadata work without first asking Render to serve those static files.
+
+The static sitemap covers the public routes declared in React Router. Individual photo-frame product pages are database-driven, so their product slugs are not present in the static Netlify sitemap; the Express sitemap endpoint includes published products when the site is served directly from Render. Keep API and admin secrets only in Render environment settings, and do not expose them in the client build.
 
 ### Backups & updates
 Back up the MongoDB database regularly (Atlas has built-in backups). To update: pull the new code, `npm run install:all`, `npm run build`, restart.

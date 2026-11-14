@@ -43,7 +43,7 @@ export default function Home() {
               <div className="container">
                 <SectionHead eyebrow={s.services.eyebrow} title={s.services.title} subtitle={s.services.subtitle} />
                 <div className="grid grid--3">
-                  {data.services.map((svc, i) => <ServiceCard key={svc.id} service={svc} delay={(i % 3) * 0.08} />)}
+                  {data.services.map((svc, i) => <ServiceCard key={svc.id || svc.slug} service={svc} delay={(i % 3) * 0.08} />)}
                 </div>
                 <div className="section__more"><Btn to="/services" variant="outline" iconRight="arrow">All services</Btn></div>
               </div>

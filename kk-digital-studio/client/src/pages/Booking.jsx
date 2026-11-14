@@ -42,6 +42,7 @@ export default function Booking() {
   }, [params]);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const availableServices = useMemo(() => (services.data || []).filter((service) => service.id), [services.data]);
   const serviceTitle = useMemo(() => services.data?.find((s) => s.id === form.serviceId)?.title || '', [services.data, form.serviceId]);
 
   const submit = async (e) => {
@@ -97,11 +98,16 @@ export default function Booking() {
               </div>
               <Field label="Email" error={errors.email} hint="Optional, for confirmation emails"><input type="email" value={form.email} onChange={set('email')} autoComplete="email" /></Field>
               <Field label="Photography service" error={errors.serviceId} required>
-                <select value={form.serviceId} onChange={set('serviceId')} disabled={services.loading}>
-                  <option value="">{services.loading ? 'Loading services…' : 'Choose a service'}</option>
-                  {(services.data || []).map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+                <select value={form.serviceId} onChange={set('serviceId')} disabled={services.loading || availableServices.length === 0}>
+                  <option value="">{services.loading ? 'Loading services…' : availableServices.length ? 'Choose a service' : 'Online booking is temporarily unavailable'}</option>
+                  {availableServices.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
                 </select>
               </Field>
+              {!services.loading && availableServices.length === 0 && (
+                <p className="muted small" role="status">
+                  Browse our <a href="/services">photography services</a> or <a href="/contact">contact the studio</a> to discuss a session. No booking has been submitted.
+                </p>
+              )}
               <div className="form-row">
                 <Field label="Preferred date" error={errors.date} required><input type="date" min={todayISO()} value={form.date} onChange={set('date')} /></Field>
                 <Field label="Preferred time" error={errors.time} required>
@@ -114,7 +120,7 @@ export default function Booking() {
               <Field label="Location / venue" error={errors.location} hint="Studio, home, venue name or area"><input value={form.location} onChange={set('location')} /></Field>
               <Field label="Additional message" error={errors.message}><textarea rows={4} value={form.message} onChange={set('message')} placeholder={serviceTitle ? `Tell us more about your ${serviceTitle.toLowerCase()}…` : 'Tell us about your occasion…'} /></Field>
               {message && <p className="form-error" role="alert">{Object.keys(errors).length ? 'Please correct the highlighted fields.' : message}</p>}
-              <Btn type="submit" size="lg" block disabled={busy}>{busy ? 'Sending request…' : 'Request booking'}</Btn>
+              <Btn type="submit" size="lg" block disabled={busy || (!services.loading && availableServices.length === 0)}>{busy ? 'Sending request…' : 'Request booking'}</Btn>
               <p className="muted small center">Submitting this form does not confirm your booking. We’ll contact you to confirm.</p>
             </form>
           </Reveal>

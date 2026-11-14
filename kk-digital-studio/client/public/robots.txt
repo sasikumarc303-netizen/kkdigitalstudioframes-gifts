@@ -1,5 +1,17 @@
 User-agent: *
 Allow: /
-Disallow: /api/
+Disallow: /api/admin/
+Disallow: /api/cart/
+Disallow: /api/orders
+Disallow: /api/bookings
+Disallow: /api/enquiries
+Allow: /api/site
+Allow: /api/home
+Allow: /api/services
+Allow: /api/packages
+Allow: /api/testimonials
+Allow: /api/categories
+Allow: /api/gallery
+Allow: /api/products
 
 Sitemap: https://kkdigitalstudioframes.com/sitemap.xml
