@@ -8,6 +8,7 @@
     "install:all": "npm --prefix kk-digital-studio run install:all",
     "dev": "npm --prefix kk-digital-studio run dev",
     "build": "npm --prefix kk-digital-studio run build",
+    "preview": "npm --prefix kk-digital-studio run preview",
     "start": "npm --prefix kk-digital-studio start",
     "seed": "npm --prefix kk-digital-studio run seed",
     "seed:demo": "npm --prefix kk-digital-studio run seed:demo",

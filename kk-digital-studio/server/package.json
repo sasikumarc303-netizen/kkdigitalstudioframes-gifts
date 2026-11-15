@@ -8,6 +8,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "seed": "node scripts/seed.js",
+    "restore:services": "node scripts/restoreServices.js",
     "create-admin": "node scripts/createAdmin.js",
     "check": "node scripts/check.js"
   },

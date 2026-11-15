@@ -84,6 +84,7 @@ Useful commands:
 |---|---|
 | `npm run dev` | API with auto-restart + Vite dev server (the Vite server proxies `/api`, `/uploads`, `/sitemap.xml`, `/robots.txt` to the API) |
 | `npm run seed` | Creates the first superadmin, categories, the 14 photography services, three starter packages and four frame products. Safe to re-run: it never overwrites existing content |
+| `npm --prefix server run restore:services` | Dry-run missing starter services; append `-- --apply --confirm-database=<database>` to insert only missing services after reviewing the target. Production also requires `--confirm-production` and an interactive confirmation |
 | `npm run seed:demo` | Same, plus **clearly sample** prices and stock on the frame products so you can try the shop. Replace them in the admin before going live |
 | `npm run create-admin` | Creates (or resets the password of) an admin account from `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
 | `npm run build` | Builds the React app into `client/dist` |
@@ -245,9 +246,9 @@ Then add a certificate with Let’s Encrypt (`certbot --nginx`). `TRUST_PROXY` a
 - Run `npm run seed` once from the platform shell.
 
 ### Netlify
-For a Netlify frontend with the Render backend, set **Base directory** to `kk-digital-studio/client`, **Build command** to `npm run build`, and **Publish directory** to `dist`. The checked-in `client/public/_redirects` proxies `/api/*` to the Render service before the SPA fallback; static files such as `sitemap.xml` and `robots.txt` are published directly. `client/public/_headers` sets their response types and prevents indexing private routes. The build also writes distinct metadata-bearing HTML shells for each fixed public route, so sitemap and metadata work without first asking Render to serve those static files.
+For a Netlify frontend with the Render backend, set **Base directory** to `kk-digital-studio/client`, **Build command** to `npm run build`, and **Publish directory** to `dist`. The checked-in `client/public/_redirects` proxies `/api/*` to the Render service before the SPA fallback. The build writes static sitemap and robots files, response headers, and metadata-bearing HTML shells for the fixed public routes.
 
-The static sitemap covers the public routes declared in React Router. Individual photo-frame product pages are database-driven, so their product slugs are not present in the static Netlify sitemap; the Express sitemap endpoint includes published products when the site is served directly from Render. Keep API and admin secrets only in Render environment settings, and do not expose them in the client build.
+The static sitemap covers the eight public routes. Individual photo-frame product pages are database-driven, so their product slugs are not present in the static Netlify sitemap; the Express sitemap endpoint includes published products when the site is served directly from Render. Keep API and admin secrets only in Render environment settings, and do not expose them in the client build.
 
 ### Backups & updates
 Back up the MongoDB database regularly (Atlas has built-in backups). To update: pull the new code, `npm run install:all`, `npm run build`, restart.

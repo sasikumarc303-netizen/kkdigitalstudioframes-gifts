@@ -11,7 +11,6 @@ import Media from '../models/Media.js';
 import SiteConfig from '../models/SiteConfig.js';
 import { MODULES } from '../config/constants.js';
 import { PASSWORD_RULE, PASSWORD_MESSAGE } from '../middleware/validate.js';
-import { PACKAGE_SEEDS, SERVICE_SEEDS } from '../../public-content.mjs';
 
 const demo = process.argv.includes('--demo-prices');
 
@@ -55,14 +54,35 @@ const giftCat = await ensureCategory('Keepsakes & Gifts', 'product', 1);
 console.log('✓ Categories ready');
 
 // ---------- services ----------
+const SERVICES = [
+  ['Wedding Photography', 'Every ritual, every glance', 'Complete coverage of your wedding day, from preparations to the final farewell, with a calm, unobtrusive approach.', ['Full-day coverage', 'Candid and traditional moments', 'Edited high-resolution gallery', 'Album design available']],
+  ['Pre-Wedding Photography', 'Your story before the vows', 'A relaxed shoot for the two of you in beautiful locations, with guided posing and natural light.', ['Location and outfit planning', 'Guided poses', 'Edited gallery', 'Prints and frames on request']],
+  ['Birthday Photography', 'Celebrations worth remembering', 'From first birthdays to milestone parties, we capture the joy, the cake and the candid laughter.', ['Candid event coverage', 'Group and family portraits', 'Quick delivery of highlights']],
+  ['Family Photography', 'Together, as you are', 'Warm family portraits in studio or outdoors that you will treasure for generations.', ['Studio or outdoor sessions', 'Multi-generation groups', 'Print and frame options']],
+  ['Individual Photoshoot', 'Your moment in the frame', 'A personal session for social profiles, portfolios or simply because you deserve great photographs.', ['Wardrobe and style guidance', 'Studio lighting', 'Retouched final images']],
+  ['Portrait Photography', 'Character in every frame', 'Refined portraits with flattering light and a relaxed, conversational direction.', ['Studio portraits', 'Natural-light sessions', 'Professional retouching']],
+  ['Passport Photography', 'Quick, compliant and clear', 'Passport, visa and ID photographs prepared to the required specifications.', ['Standard size options', 'Same-visit printing', 'Digital copy available']],
+  ['Product Photography', 'Show your product at its best', 'Clean, consistent product images for catalogues, online shops and social media.', ['Plain and styled backgrounds', 'Multiple angles', 'Web-ready files']],
+  ['Event Photography', 'Capture the whole occasion', 'Corporate gatherings, ceremonies and community events documented with care.', ['Candid coverage', 'Group photographs', 'Fast turnaround']],
+  ['Professional Headshots', 'A confident first impression', 'Polished headshots for LinkedIn, company profiles and personal branding.', ['Studio lighting', 'Multiple looks', 'Subtle retouching']],
+  ['Photo Printing', 'From screen to something you can hold', 'High-quality prints in a range of sizes from your digital files or our own sessions.', ['Multiple paper options', 'Standard and large sizes', 'Careful colour matching']],
+  ['Photo Framing', 'Finished, displayed, loved', 'Choose from our frame finishes and sizes to give your favourite photographs a proper home.', ['Oak, Acrylic and Metal finishes', 'Popular sizes', 'Custom sizes on request']],
+  ['School Photography', 'Memories from the classroom', 'Individual and class photographs for schools, handled smoothly with minimal disruption.', ['Class and individual portraits', 'Group photographs', 'Print packages']],
+  ['Album Design', 'A story you can turn the pages of', 'Thoughtfully designed albums that sequence your best images into a lasting keepsake.', ['Custom layouts', 'Proof approval', 'Premium printing and binding']],
+];
 if ((await Service.countDocuments()) === 0) {
-  for (const [order, service] of SERVICE_SEEDS.entries()) await Service.create({ ...service, order });
-  console.log(`✓ Added ${SERVICE_SEEDS.length} services (upload an image for each in Admin → Services)`);
+  for (const [order, [title, tagline, description, features]] of SERVICES.entries()) await Service.create({ title, tagline, description, features, order });
+  console.log(`✓ Added ${SERVICES.length} services (upload an image for each in Admin → Services)`);
 }
 
 // ---------- packages (no prices invented: 0 shows "Contact for pricing") ----------
 if ((await Package.countDocuments()) === 0) {
-  await Package.create(PACKAGE_SEEDS.map((pkg, order) => ({ ...pkg, order })));
+  const pk = [
+    ['Essential', 'A focused session to get great images', ['One photographer', 'Single location', 'Edited digital gallery'], false],
+    ['Signature', 'Our most popular, balanced package', ['Extended session', 'Two outfit or look changes', 'Edited gallery', 'Selected prints'], true],
+    ['Premium', 'The complete storytelling experience', ['Full coverage', 'Multiple locations', 'Designed album', 'Framed enlargement'], false],
+  ];
+  await Package.create(pk.map(([name, tagline, features, popular], order) => ({ name, tagline, features, popular, order, price: 0 })));
   console.log('✓ Added 3 package templates – set real prices in Admin → Packages');
 }
 

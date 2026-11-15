@@ -1,7 +1,11 @@
 User-agent: *
 Allow: /
-Disallow: /api/admin/
-Disallow: /api/cart/
+Disallow: /admin
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /api/admin
+Disallow: /api/cart
 Disallow: /api/orders
 Disallow: /api/bookings
 Disallow: /api/enquiries

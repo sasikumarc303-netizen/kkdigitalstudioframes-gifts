@@ -4,15 +4,17 @@ import Img from '../components/Img.jsx';
 import Icon from '../components/Icon.jsx';
 import Reveal, { ImageReveal } from '../components/Reveal.jsx';
 import { Btn } from '../components/Buttons.jsx';
-import { ErrorState, Skeleton, EmptyState } from '../components/States.jsx';
+import { ErrorState, Skeleton } from '../components/States.jsx';
 import { serviceIcon } from '../components/Cards.jsx';
 import EnquiryModal from '../components/EnquiryModal.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { api } from '../services/api.js';
+import { getFallbackServices } from '../../../public-content.mjs';
 
 export default function Services() {
   const { data, loading, error, reload } = useAsync(() => api.get('/services'), []);
   const [enquiry, setEnquiry] = useState(null);
+  const services = data?.length ? data : !loading && (error || data) ? getFallbackServices() : [];
 
   return (
     <>
@@ -21,10 +23,9 @@ export default function Services() {
         <div className="container">
           {error && <ErrorState error={error} onRetry={reload} />}
           {loading && <div className="stack"><Skeleton h={320} /><Skeleton h={320} /></div>}
-          {data && data.length === 0 && <EmptyState title="Services coming soon" text="Please check back shortly, or contact us directly." action={<Btn to="/contact">Contact us</Btn>} />}
-          {data && data.length > 0 && (
+          {services.length > 0 && (
             <div className="service-list">
-              {data.map((s, i) => (
+              {services.map((s, i) => (
                 <article key={s.id || s.slug} className={`service-row ${i % 2 ? 'service-row--reverse' : ''}`} id={s.slug}>
                   <ImageReveal className="service-row__media">
                     <Img src={s.image} alt={s.image ? s.title : ''} ratio="4/3" width={900} icon={serviceIcon(s.title)} label={s.title} />
@@ -46,11 +47,6 @@ export default function Services() {
                 </article>
               ))}
             </div>
-          )}
-          {data?.some((service) => service.isLocalFallback) && (
-            <p className="muted small" role="status">
-              Showing the studio’s standard service information. Online booking options will be available when the live service list reconnects.
-            </p>
           )}
         </div>
       </section>

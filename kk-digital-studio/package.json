@@ -7,6 +7,7 @@
     "install:all": "npm install && npm --prefix server install && npm --prefix client install",
     "dev": "concurrently -n api,web -c green,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
     "build": "npm --prefix client run build",
+    "preview": "npm --prefix client run preview",
     "start": "npm --prefix server start",
     "seed": "npm --prefix server run seed",
     "seed:demo": "npm --prefix server run seed -- --demo-prices",

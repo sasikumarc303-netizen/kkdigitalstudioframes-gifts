@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import Icon from '../../components/Icon.jsx';
 import { Btn } from '../../components/Buttons.jsx';
 import { api } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -10,7 +9,13 @@ function AuthFrame({ title, text, children, footer }) {
   return (
     <div className="a-auth">
       <div className="a-auth__card">
-        <div className="a-auth__logo"><Icon name="camera" size={30} stroke={1.4} /></div>
+        <img
+          className="a-auth__logo"
+          src="/images/kk-digital-logo.jpg"
+          alt="KK Digital Studio – Gifts and Customized Photo Frames"
+          width="180"
+          height="72"
+        />
         <h1>{title}</h1>
         {text && <p className="a-muted">{text}</p>}
         {children}

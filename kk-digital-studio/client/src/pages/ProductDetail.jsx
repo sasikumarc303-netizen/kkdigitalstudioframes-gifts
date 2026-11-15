@@ -8,8 +8,7 @@ import SectionHead from '../components/SectionHead.jsx';
 import EnquiryModal from '../components/EnquiryModal.jsx';
 import { Btn } from '../components/Buttons.jsx';
 import { ProductCard } from '../components/Cards.jsx';
-import { Skeleton } from '../components/States.jsx';
-import { PageHero } from '../components/Sections.jsx';
+import { ErrorState, Skeleton } from '../components/States.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { useCart } from '../context/CartContext.jsx';
@@ -24,20 +23,7 @@ export default function ProductDetail() {
   const { data, loading, error, reload } = useAsync(() => api.get(`/products/${encodeURIComponent(id)}`), [id]);
   if (loading && !data) return <div className="container section"><div className="pd"><Skeleton h={520} /><Skeleton h={520} /></div></div>;
   if (error?.status === 404) return <NotFound />;
-  if (error) {
-    return (
-      <>
-        <PageHero eyebrow="Photo frame collection" title="Product details are temporarily unavailable" text="We couldn’t load this item right now. You can browse the collection or contact the studio for help." />
-        <section className="section section--ivory section--tight">
-          <div className="container section__more">
-            <Btn to="/photo-frames" variant="outline">Browse photo frames</Btn>
-            <Btn to="/contact">Contact the studio</Btn>
-            <button type="button" className="btn btn--ghost" onClick={reload}>Try again</button>
-          </div>
-        </section>
-      </>
-    );
-  }
+  if (error) return <div className="container section"><ErrorState error={error} onRetry={reload} /></div>;
   return <Detail key={data.product.id} product={data.product} related={data.related} />;
 }
 

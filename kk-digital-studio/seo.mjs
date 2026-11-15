@@ -1,5 +1,57 @@
 export const SEO_ORIGIN = 'https://kkdigitalstudioframes.com';
 
+export const SITEMAP_ROUTES = [
+  ['/', 1.0],
+  ['/about', 0.7],
+  ['/services', 0.9],
+  ['/portfolio', 0.9],
+  ['/packages', 0.8],
+  ['/photo-frames', 0.8],
+  ['/booking', 0.9],
+  ['/contact', 0.8],
+];
+
+export const PUBLIC_API_ROUTES = [
+  '/api/site',
+  '/api/home',
+  '/api/services',
+  '/api/packages',
+  '/api/testimonials',
+  '/api/categories',
+  '/api/gallery',
+  '/api/products',
+];
+
+export const PRIVATE_CRAWL_ROUTES = [
+  '/admin',
+  '/cart',
+  '/checkout',
+  '/orders',
+  '/api/admin',
+  '/api/cart',
+  '/api/orders',
+  '/api/bookings',
+  '/api/enquiries',
+];
+
+export function createRobotsTxt(customRobots = '') {
+  const customLines = String(customRobots)
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*sitemap\s*:/i.test(line))
+    .filter((line) => !/^\s*disallow\s*:\s*\/api(?:\/.*)?\s*$/i.test(line))
+    .filter((line) => line.trim());
+  const rules = [
+    ...customLines,
+    'User-agent: *',
+    'Allow: /',
+    ...PRIVATE_CRAWL_ROUTES.map((route) => `Disallow: ${route}`),
+    ...PUBLIC_API_ROUTES.map((route) => `Allow: ${route}`),
+    '',
+    `Sitemap: ${SEO_ORIGIN}/sitemap.xml`,
+  ];
+  return `${rules.join('\n')}\n`;
+}
+
 export const SITE_TITLE = 'KK Digital Studio | Photography, Custom Gifts & Photo Frames';
 export const SITE_DESCRIPTION =
   'KK Digital Studio offers professional photography, customized gifts, personalized photo frames and studio services. Explore our portfolio and book your photography session.';

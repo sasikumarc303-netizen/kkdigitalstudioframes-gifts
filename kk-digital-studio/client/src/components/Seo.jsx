@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useSite } from '../context/SiteContext.jsx';
-import { SEO_ORIGIN, SEO_PAGES, SITE_DESCRIPTION } from '../../../seo.mjs';
+import { SEO_ORIGIN } from '../../../seo.mjs';
 
 function setMeta(selector, attrs) {
   let el = document.head.querySelector(selector);
@@ -13,7 +13,42 @@ function setMeta(selector, attrs) {
   return el;
 }
 
-const abs = (u) => (!u ? '' : /^https?:/i.test(u) ? u : `${SEO_ORIGIN}${u.startsWith('/') ? '' : '/'}${u}`);
+const abs = (u) => (!u ? '' : /^https?:/i.test(u) ? u : `${window.location.origin}${u.startsWith('/') ? '' : '/'}${u}`);
+
+const PAGE_FALLBACKS = {
+  '/': {
+    title: '{brand} | Photography, Custom Gifts & Photo Frames',
+    description: 'KK Digital Studio offers professional photography, customized gifts, personalized photo frames and studio services. Explore our portfolio and book your photography session.',
+  },
+  '/about': {
+    title: 'About {brand} | Photography Studio in Tirupathur',
+    description: 'Learn about KK Digital Studio, a photography studio in Tirupathur, and our personal approach to capturing your moments.',
+  },
+  '/services': {
+    title: 'Photography Services | {brand}',
+    description: 'From milestone celebrations to everyday portraits, printing and framing, explore the photography services offered by KK Digital Studio.',
+  },
+  '/portfolio': {
+    title: 'Photography Portfolio | {brand}',
+    description: 'Explore selected photography work and stories captured by KK Digital Studio.',
+  },
+  '/packages': {
+    title: 'Photography Packages | {brand}',
+    description: 'Explore photography package options and contact KK Digital Studio to tailor a session to your occasion, people and budget.',
+  },
+  '/photo-frames': {
+    title: 'Photo Frames & Keepsakes | {brand}',
+    description: 'Explore photo frame sizes and finishes, or ask KK Digital Studio to print and frame your photograph.',
+  },
+  '/booking': {
+    title: 'Book a Photography Session | {brand}',
+    description: 'Share your details and preferred date to request a photography session with KK Digital Studio.',
+  },
+  '/contact': {
+    title: 'Contact {brand} | Tirupathur',
+    description: 'Contact KK Digital Studio in Tirupathur with questions about a photography session, print or frame.',
+  },
+};
 
 /**
  * Per-page SEO. Values come from the admin panel (Settings → SEO) keyed by route, and can be overridden by props
@@ -24,57 +59,27 @@ export default function Seo({ title, description, image, noindex = false }) {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const defaults = SEO_PAGES[pathname] || {};
-    const page = config?.seo?.pages?.[pathname] || defaults;
-    const t = title || page.title || config?.general?.businessName || SEO_PAGES['/'].title;
-    const d = description || page.description || defaults.description || SITE_DESCRIPTION;
+    const page = config?.seo?.pages?.[pathname] || {};
+    const brand = config?.general?.businessName || 'KK Digital Studio';
+    const fallback = PAGE_FALLBACKS[pathname];
+    const t = title || page.title || fallback?.title.replace('{brand}', brand) || brand;
+    const d = description || page.description || fallback?.description || '';
+    const canonical = `${SEO_ORIGIN}${pathname}`;
     const img = abs(image || page.ogImage || config?.seo?.defaultOgImage);
-    const canonical = `${SEO_ORIGIN}${pathname === '/' ? '/' : pathname.replace(/\/+$/, '')}`;
     document.title = t;
     setMeta('meta[name="description"]', { name: 'description', content: d });
     setMeta('meta[property="og:title"]', { property: 'og:title', content: t });
     setMeta('meta[property="og:description"]', { property: 'og:description', content: d });
     setMeta('meta[property="og:type"]', { property: 'og:type', content: 'website' });
-    setMeta('meta[property="og:site_name"]', { property: 'og:site_name', content: 'KK Digital Studio' });
     setMeta('meta[property="og:url"]', { property: 'og:url', content: canonical });
     if (img) setMeta('meta[property="og:image"]', { property: 'og:image', content: img });
-    else document.head.querySelector('meta[property="og:image"]')?.remove();
     setMeta('meta[name="twitter:card"]', { name: 'twitter:card', content: 'summary_large_image' });
-    setMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: t });
-    setMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: d });
-    if (img) setMeta('meta[name="twitter:image"]', { name: 'twitter:image', content: img });
-    else document.head.querySelector('meta[name="twitter:image"]')?.remove();
     setMeta('link[rel="canonical"]', { tag: 'link', rel: 'canonical', href: canonical });
     const robots = document.head.querySelector('meta[name="robots"]');
     if (noindex) setMeta('meta[name="robots"]', { name: 'robots', content: 'noindex,nofollow' });
     else if (robots) robots.remove();
     const fav = config?.general?.favicon;
     if (fav) setMeta('link[rel="icon"]', { tag: 'link', rel: 'icon', href: fav }).removeAttribute('type');
-    const structuredData = {
-      '@context': 'https://schema.org',
-      '@graph': [
-        {
-          '@type': 'WebSite',
-          name: 'KK Digital Studio',
-          url: `${SEO_ORIGIN}/`,
-          description: SITE_DESCRIPTION,
-        },
-        {
-          '@type': 'Organization',
-          name: 'KK Digital Studio',
-          url: `${SEO_ORIGIN}/`,
-          ...(config?.general?.logo ? { logo: abs(config.general.logo) } : {}),
-        },
-      ],
-    };
-    let structuredDataTag = document.head.querySelector('#kk-structured-data');
-    if (!structuredDataTag) {
-      structuredDataTag = document.createElement('script');
-      structuredDataTag.id = 'kk-structured-data';
-      structuredDataTag.type = 'application/ld+json';
-      document.head.appendChild(structuredDataTag);
-    }
-    structuredDataTag.textContent = JSON.stringify(structuredData);
   }, [config, pathname, title, description, image, noindex]);
 
   return null;

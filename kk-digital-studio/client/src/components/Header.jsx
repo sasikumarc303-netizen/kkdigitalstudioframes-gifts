@@ -9,18 +9,16 @@ import { useScrolled, useLockBody } from '../hooks/useMedia.js';
 
 export function Brand({ light = false }) {
   const { config, brand } = useSite();
-  const logo = config?.general?.logo;
+  const logo = config?.general?.logo || '/images/kk-digital-logo.jpg';
   return (
     <Link to="/" className={`brand ${light ? 'brand--light' : ''}`} aria-label={`${brand} – home`}>
-      {logo ? <img src={logo} alt={brand} className="brand__logo" height="44" /> : (
-        <>
-          <span className="brand__mark" aria-hidden="true">KK</span>
-          <span className="brand__word">
-            <strong>{brand.replace(/ studio$/i, '').toUpperCase()}</strong>
-            <small>STUDIO</small>
-          </span>
-        </>
-      )}
+      <img
+        src={logo}
+        alt="KK Digital Studio – Gifts and Customized Photo Frames"
+        className="brand__logo"
+        width="180"
+        height="72"
+      />
     </Link>
   );
 }

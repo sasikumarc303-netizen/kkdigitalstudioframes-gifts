@@ -1,6 +1,5 @@
 // Default site content & settings. Stored values (edited in the admin panel) are merged over these.
 // Nothing here is a made-up business fact: no phone numbers, prices, reviews or opening hours are invented.
-import { SEO_PAGES } from '../../seo.mjs';
 
 export const DEFAULT_CONFIG = {
   general: {
@@ -108,7 +107,14 @@ export const DEFAULT_CONFIG = {
     defaultOgImage: '/images/hero-poster.jpg',
     robotsTxt: '',
     pages: {
-      ...Object.fromEntries(Object.entries(SEO_PAGES).map(([route, page]) => [route, { ...page, ogImage: '' }])),
+      '/': { title: 'KK Digital Studio | Photography Studio in Tirupathur', description: 'Professional photography, photo printing and framing in Achamangalam, Tirupathur, Tamil Nadu. Book your session today.', ogImage: '' },
+      '/about': { title: 'About | KK Digital Studio', description: 'Meet KK Digital Studio, a photography studio creating portraits, weddings, family stories and keepsake prints in Tirupathur.', ogImage: '' },
+      '/services': { title: 'Photography Services | KK Digital Studio', description: 'Wedding, pre-wedding, portrait, family, event, product and passport photography, plus printing, framing and album design.', ogImage: '' },
+      '/portfolio': { title: 'Portfolio | KK Digital Studio', description: 'Browse our photography portfolio across weddings, portraits, families and events.', ogImage: '' },
+      '/packages': { title: 'Photography Packages | KK Digital Studio', description: 'Explore photography packages from KK Digital Studio and enquire for a tailored quote.', ogImage: '' },
+      '/photo-frames': { title: 'Photo Frames & Keepsakes | KK Digital Studio', description: 'Custom photo frames, wall collage frames, heart plaques and LED photo lamps in Oak, Acrylic and Metal finishes.', ogImage: '' },
+      '/booking': { title: 'Book a Session | KK Digital Studio', description: 'Request your photography session with KK Digital Studio. We will confirm your booking personally.', ogImage: '' },
+      '/contact': { title: 'Contact & Location | KK Digital Studio', description: 'Contact KK Digital Studio in Achamangalam, Tirupathur. Call, WhatsApp or send an enquiry.', ogImage: '' },
       '/cart': { title: 'Your Cart | KK Digital Studio', description: 'Review your photo frame order.', ogImage: '' },
       '/checkout': { title: 'Checkout | KK Digital Studio', description: 'Complete your photo frame order.', ogImage: '' },
     },

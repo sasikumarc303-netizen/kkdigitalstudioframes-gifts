@@ -77,7 +77,7 @@ export default function AdminLayout() {
       <a className="skip-link" href="#a-main">Skip to content</a>
       <aside className={`a-side ${open ? 'is-open' : ''}`} aria-label="Admin navigation">
         <div className="a-side__brand">
-          <Link to="/admin/dashboard"><Icon name="camera" size={22} /><span>KK Digital<br /><small>Admin</small></span></Link>
+          <Link to="/admin/dashboard"><img src="/images/kk-digital-logo.jpg" alt="KK Digital Studio" className="a-side__logo" width="150" height="60" /><span className="a-side__label">Admin</span></Link>
           <button type="button" className="a-icon-btn a-side__close" onClick={() => setOpen(false)} aria-label="Close menu"><Icon name="close" /></button>
         </div>
         <nav>
