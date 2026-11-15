@@ -101,7 +101,6 @@ export default function AdminLayout() {
       <div className="a-main">
         <header className="a-top">
           <button type="button" className="a-icon-btn a-top__menu" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}><Icon name="menu" /></button>
-          <img src="/images/kk-admin-dashboard-logo.png" alt="KK Digital Studio" className="a-top__logo" width="220" height="147" />
           <strong className="a-top__title">{current?.label || 'My account'}</strong>
           <div className="a-top__user">
             <Link to="/admin/account" className="a-top__me"><span className="a-avatar" aria-hidden="true">{user.name.slice(0, 1).toUpperCase()}</span><span><b>{user.name}</b><small>{user.role}</small></span></Link>
