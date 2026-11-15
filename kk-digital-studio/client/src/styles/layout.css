@@ -32,7 +32,7 @@
 .header.is-open .brand, .header.is-open .header__toggle { position: relative; z-index: 3; }
 
 .brand { display: inline-flex; align-items: center; gap: 0.7rem; text-decoration: none; color: inherit; flex-shrink: 0; }
-.brand__logo { display: block; width: 180px; height: 72px; max-width: min(36vw, 180px); object-fit: contain; }
+.brand__logo { display: block; width: 120px; height: 80px; max-width: min(36vw, 120px); object-fit: contain; }
 .brand__mark { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--forest); color: var(--ivory); font-family: var(--font-head); font-weight: 600; font-size: 1rem; letter-spacing: 0.02em; border: 1px solid rgba(216, 200, 173, 0.5); }
 .brand--light .brand__mark { background: var(--ivory); color: var(--forest); }
 .brand__word { display: flex; flex-direction: column; line-height: 1; font-family: var(--font-head); }
@@ -160,6 +160,10 @@
 .splash { min-height: 100vh; display: grid; place-content: center; text-align: center; gap: 1rem; background: var(--forest); color: var(--ivory); padding: 2rem; }
 .splash h1 { color: var(--ivory); font-size: 2rem; }
 .splash__mark { font-family: var(--font-head); font-size: 3rem; letter-spacing: 0.08em; animation: pulse 1.6s ease-in-out infinite; }
-.splash__logo { display: block; width: 180px; height: 72px; object-fit: contain; animation: pulse 1.6s ease-in-out infinite; }
-@media (max-width: 640px) { .brand__logo, .splash__logo { width: 136px; height: 48px; } }
+.splash__logo { display: block; width: 180px; height: 120px; object-fit: contain; animation: pulse 1.6s ease-in-out infinite; }
+@media (min-width: 641px) and (max-width: 1023px) { .brand__logo { width: 102px; height: 68px; max-width: min(36vw, 102px); } }
+@media (max-width: 640px) {
+  .brand__logo { width: 90px; height: 60px; max-width: min(36vw, 90px); }
+  .splash__logo { width: 120px; height: 80px; }
+}
 @keyframes pulse { 50% { opacity: 0.4; } }

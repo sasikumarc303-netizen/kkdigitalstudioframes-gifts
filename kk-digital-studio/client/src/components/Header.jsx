@@ -8,16 +8,15 @@ import { useCart } from '../context/CartContext.jsx';
 import { useScrolled, useLockBody } from '../hooks/useMedia.js';
 
 export function Brand({ light = false }) {
-  const { config, brand } = useSite();
-  const logo = config?.general?.logo || '/images/kk-digital-logo.jpg';
+  const { brand } = useSite();
   return (
     <Link to="/" className={`brand ${light ? 'brand--light' : ''}`} aria-label={`${brand} – home`}>
       <img
-        src={logo}
+        src="/kk-logo.png"
         alt="KK Digital Studio – Gifts and Customized Photo Frames"
         className="brand__logo"
-        width="180"
-        height="72"
+        width="120"
+        height="80"
       />
     </Link>
   );

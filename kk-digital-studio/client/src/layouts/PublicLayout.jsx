@@ -24,7 +24,7 @@ function Shell() {
   const outlet = useOutlet();
   const reduce = useReducedMotion();
 
-  if (loading && !config) return <div className="splash" role="status" aria-label="Loading"><img className="splash__logo" src="/images/kk-digital-logo.jpg" alt="" width="180" height="72" /></div>;
+  if (loading && !config) return <div className="splash" role="status" aria-label="Loading"><img className="splash__logo" src="/kk-logo.png" alt="KK Digital Studio" width="180" height="120" /></div>;
   if (error || !config) {
     return (
       <div className="splash splash--error">
