@@ -19,7 +19,7 @@ body.is-admin { background: #f1ece2; }
 .a-side.is-open { transform: none; box-shadow: var(--shadow-lg); }
 .a-side__brand { display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 1.1rem 0.9rem; border-bottom: 1px solid rgba(245, 240, 231, 0.12); }
 .a-side__brand a { display: flex; align-items: center; gap: 0.7rem; min-width: 0; text-decoration: none; font-family: var(--font-head); font-size: 1.1rem; line-height: 1.1; }
-.a-side__logo { display: block; width: 220px; height: auto; max-width: calc(100% - 3.5rem); max-height: 55px; object-fit: contain; padding: 6px 10px; background: #F4F0E6; border-radius: 8px; }
+.a-side__logo { display: block; width: 220px; height: auto; max-width: calc(100% - 3.5rem); max-height: 60px; object-fit: contain; }
 .a-side__label { align-self: flex-end; margin-bottom: 0.5rem; font-family: var(--font-body); font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.7; }
 .a-side nav { padding: 0.5rem 0.7rem; flex: 1; }
 .a-nav__group { margin: 0.9rem 0; }
@@ -32,7 +32,7 @@ body.is-admin { background: #f1ece2; }
 .a-side__close { color: var(--ivory); }
 .a-main { min-width: 0; }
 .a-top { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem var(--gutter); min-height: 60px; background: rgba(241, 236, 226, 0.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
-.a-top__logo { display: block; width: 200px; height: auto; max-width: 100%; max-height: 50px; object-fit: contain; flex: none; }
+.a-top__logo { display: block; width: 220px; height: auto; max-width: min(100%, 220px); max-height: 60px; object-fit: contain; flex: none; }
 .a-top__title { font-family: var(--font-head); font-size: 1.15rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .a-top__user { display: flex; align-items: center; gap: 0.35rem; }
 .a-top__me { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; padding: 0.2rem 0.4rem; border-radius: 6px; }
