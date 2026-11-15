@@ -64,6 +64,7 @@ export default function AdminLayout() {
   const current = allowed.flatMap((g) => g.items).find((i) => location.pathname.startsWith(`/admin/${i.to}`));
   const onAccount = location.pathname.startsWith('/admin/account');
   const first = allowed[0]?.items[0];
+  const profileDisplayName = user.name === 'Studio Owner' ? 'KK Digital Studio' : user.name;
 
   // A signed-in user opening a module they have no permission for is sent to their first allowed one.
   if (!onAccount && !current) return first ? <Navigate to={`/admin/${first.to}`} replace /> : (
@@ -103,7 +104,7 @@ export default function AdminLayout() {
           <button type="button" className="a-icon-btn a-top__menu" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}><Icon name="menu" /></button>
           <strong className="a-top__title">{current?.label || 'My account'}</strong>
           <div className="a-top__user">
-            <Link to="/admin/account" className="a-top__me"><span className="a-avatar" aria-hidden="true">{user.name.slice(0, 1).toUpperCase()}</span><span><b>{user.name}</b><small>{user.role}</small></span></Link>
+            <Link to="/admin/account" className="a-top__me"><span className="a-avatar" aria-hidden="true">{profileDisplayName.slice(0, 1).toUpperCase()}</span><span><b>{profileDisplayName}</b><small>{user.role}</small></span></Link>
             <button type="button" className="a-icon-btn" onClick={doLogout} aria-label="Sign out" title="Sign out"><Icon name="logout" /></button>
           </div>
         </header>
