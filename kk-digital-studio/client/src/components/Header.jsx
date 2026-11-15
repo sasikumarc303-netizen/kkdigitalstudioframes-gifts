@@ -12,11 +12,11 @@ export function Brand({ light = false }) {
   return (
     <Link to="/" className={`brand ${light ? 'brand--light' : ''}`} aria-label={`${brand} – home`}>
       <img
-        src="/kk-logo.png"
+        src="/images/kk-digital-studio-brand-logo.png"
         alt="KK Digital Studio – Gifts and Customized Photo Frames"
         className="brand__logo"
-        width="120"
-        height="80"
+        width="150"
+        height="50"
       />
     </Link>
   );

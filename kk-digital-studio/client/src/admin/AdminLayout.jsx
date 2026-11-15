@@ -77,7 +77,7 @@ export default function AdminLayout() {
       <a className="skip-link" href="#a-main">Skip to content</a>
       <aside className={`a-side ${open ? 'is-open' : ''}`} aria-label="Admin navigation">
         <div className="a-side__brand">
-          <Link to="/admin/dashboard"><img src="/images/kk-digital-logo.jpg" alt="KK Digital Studio" className="a-side__logo" width="150" height="60" /><span className="a-side__label">Admin</span></Link>
+          <Link to="/admin/dashboard"><img src="/images/kk-digital-studio-brand-logo.png" alt="KK Digital Studio" className="a-side__logo" width="150" height="50" /><span className="a-side__label">Admin</span></Link>
           <button type="button" className="a-icon-btn a-side__close" onClick={() => setOpen(false)} aria-label="Close menu"><Icon name="close" /></button>
         </div>
         <nav>
@@ -101,6 +101,7 @@ export default function AdminLayout() {
       <div className="a-main">
         <header className="a-top">
           <button type="button" className="a-icon-btn a-top__menu" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}><Icon name="menu" /></button>
+          <img src="/images/kk-digital-studio-brand-logo.png" alt="KK Digital Studio" className="a-top__logo" width="96" height="32" />
           <strong className="a-top__title">{current?.label || 'My account'}</strong>
           <div className="a-top__user">
             <Link to="/admin/account" className="a-top__me"><span className="a-avatar" aria-hidden="true">{user.name.slice(0, 1).toUpperCase()}</span><span><b>{user.name}</b><small>{user.role}</small></span></Link>

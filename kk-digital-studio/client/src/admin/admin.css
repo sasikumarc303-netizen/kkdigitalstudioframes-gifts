@@ -19,7 +19,7 @@ body.is-admin { background: #f1ece2; }
 .a-side.is-open { transform: none; box-shadow: var(--shadow-lg); }
 .a-side__brand { display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 1.1rem 0.9rem; border-bottom: 1px solid rgba(245, 240, 231, 0.12); }
 .a-side__brand a { display: flex; align-items: center; gap: 0.7rem; min-width: 0; text-decoration: none; font-family: var(--font-head); font-size: 1.1rem; line-height: 1.1; }
-.a-side__logo { display: block; width: 150px; height: 60px; max-width: calc(100% - 3.5rem); object-fit: contain; }
+.a-side__logo { display: block; width: 220px; height: auto; max-width: calc(100% - 3.5rem); max-height: 55px; object-fit: contain; padding: 6px 10px; background: #F4F0E6; border-radius: 8px; }
 .a-side__label { align-self: flex-end; margin-bottom: 0.5rem; font-family: var(--font-body); font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.7; }
 .a-side nav { padding: 0.5rem 0.7rem; flex: 1; }
 .a-nav__group { margin: 0.9rem 0; }
@@ -32,6 +32,7 @@ body.is-admin { background: #f1ece2; }
 .a-side__close { color: var(--ivory); }
 .a-main { min-width: 0; }
 .a-top { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem var(--gutter); min-height: 60px; background: rgba(241, 236, 226, 0.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.a-top__logo { display: block; width: 200px; height: auto; max-width: 100%; max-height: 50px; object-fit: contain; flex: none; }
 .a-top__title { font-family: var(--font-head); font-size: 1.15rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .a-top__user { display: flex; align-items: center; gap: 0.35rem; }
 .a-top__me { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; padding: 0.2rem 0.4rem; border-radius: 6px; }
@@ -312,12 +313,16 @@ td > .a-badge:first-child, .a-card__head .a-badge, .a-tags .a-badge, .a-simple-l
 .a-auth { min-height: 100vh; min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 1.2rem; padding: 1.5rem 1.1rem; background: radial-gradient(circle at 20% 10%, rgba(82, 102, 83, 0.18), transparent 45%), var(--ivory); }
 .a-auth__card { width: min(420px, 100%); background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 2rem 1.5rem; box-shadow: var(--shadow); }
 @media (min-width: 480px) { .a-auth__card { padding: 2.4rem 2.2rem; } }
-.a-auth__logo { display: block; width: min(180px, 100%); height: 72px; object-fit: contain; margin: 0 auto 1rem; }
+.a-auth__logo { display: block; width: min(300px, 100%); height: auto; max-width: 100%; max-height: 75px; object-fit: contain; margin: 0 auto 1rem; }
 .a-auth h1 { font-size: 1.7rem; margin: 0 0 0.3rem; }
 .a-auth form { margin-top: 1.2rem; }
 .a-auth__foot { text-align: center; margin: 1.2rem 0 0; font-size: 0.88rem; }
 .a-auth__back { font-size: 0.85rem; color: var(--text-soft); }
-@media (max-width: 640px) { .a-auth__logo { width: min(136px, 100%); height: 48px; } }
+@media (max-width: 640px) {
+  .a-auth__logo { width: min(260px, 100%); max-height: 65px; }
+  .a-top__logo { width: 160px; max-height: 40px; }
+}
+@media (max-width: 360px) { .a-top__logo { width: 120px; max-height: 30px; } }
 .btn--block { width: 100%; }
 
 /* toasts sit at the top inside the admin so they never cover save bars or modal footers */

@@ -11,10 +11,10 @@ function AuthFrame({ title, text, children, footer }) {
       <div className="a-auth__card">
         <img
           className="a-auth__logo"
-          src="/images/kk-digital-logo.jpg"
+          src="/images/kk-digital-studio-brand-logo.png"
           alt="KK Digital Studio – Gifts and Customized Photo Frames"
           width="180"
-          height="72"
+          height="60"
         />
         <h1>{title}</h1>
         {text && <p className="a-muted">{text}</p>}
