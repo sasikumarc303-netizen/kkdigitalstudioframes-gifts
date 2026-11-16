@@ -40,7 +40,7 @@ export default function SeoManager() {
         <ImageField label="Default share image" value={d.defaultOgImage} onChange={(v) => g.set('defaultOgImage', v)} folder="seo" hint="Recommended 1200×630." />
       </Card>
       <Card title="robots.txt">
-        <TextArea label="Custom robots.txt (optional)" rows={6} value={d.robotsTxt} onChange={(v) => g.set('robotsTxt', v)} hint="Leave blank to allow public API routes and block admin, cart, checkout, and sensitive API paths. Robots.txt guides crawlers; it does not secure routes. The sitemap is generated at /sitemap.xml." />
+        <TextArea label="Custom robots.txt (optional)" rows={6} value={d.robotsTxt} onChange={(v) => g.set('robotsTxt', v)} hint="Leave blank to use the default, which allows search engines and hides /admin and /api. Your sitemap is generated automatically at /sitemap.xml." />
       </Card>
       <SaveBar dirty={g.dirty} saving={g.saving} onSave={() => g.save()} onReset={g.reset} error={g.saveError} />
     </>

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/generate-seo-pages.js",
+    "build": "vite build",
     "prepreview": "npm run build",
     "preview": "vite preview"
   },

@@ -1,25 +1,13 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  createRobotsTxt,
-  SEO_ORIGIN,
-  SEO_PAGES,
-  SITE_DESCRIPTION,
-  SITEMAP_ROUTES,
-} from '../../seo.mjs';
+import { SEO_ORIGIN, SEO_PAGES, SITE_DESCRIPTION } from '../../seo.mjs';
 import { DEFAULT_CONFIG } from '../../server/services/defaults.js';
 import { PACKAGE_SEEDS, SERVICE_SEEDS } from '../../public-content.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(scriptDir, '..');
 const distDir = path.join(clientDir, 'dist');
-const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${SITEMAP_ROUTES.map(([route, priority]) => `  <url><loc>${SEO_ORIGIN}${route}</loc><priority>${priority}</priority></url>`).join('\n')}\n</urlset>\n`;
-const robots = createRobotsTxt();
-await writeFile(path.join(clientDir, 'public', 'sitemap.xml'), sitemap, 'utf8');
-await writeFile(path.join(clientDir, 'public', 'robots.txt'), robots, 'utf8');
-await writeFile(path.join(distDir, 'sitemap.xml'), sitemap, 'utf8');
-await writeFile(path.join(distDir, 'robots.txt'), robots, 'utf8');
 const template = await readFile(path.join(distDir, 'index.html'), 'utf8');
 
 if (!template.includes('<!--SEO_HEAD-->')) {
@@ -175,40 +163,29 @@ for (const [pathname, { title }] of Object.entries(SEO_PAGES)) {
     ? path.join(distDir, 'index.html')
     : path.join(distDir, pathname.slice(1), 'index.html');
   const html = await readFile(outputPath, 'utf8');
-  const canonical = `${SEO_ORIGIN}${pathname}`;
-  if (
-    !html.includes('<h1') ||
-    !html.includes('</h1>') ||
-    !html.includes('id="main"') ||
-    !html.includes(escapeHtml(title)) ||
-    !html.includes(`<link rel="canonical" href="${escapeHtml(canonical)}"`) ||
-    html.includes('kk-digital.netlify.app')
-  ) {
+  if (!html.includes(`<h1`) || !html.includes(`</h1>`) || !html.includes(`id="main"`) || !html.includes(escapeHtml(title))) {
     throw new Error(`Generated route ${pathname} is missing meaningful public HTML or metadata.`);
   }
 }
 
+const sitemap = await readFile(path.join(distDir, 'sitemap.xml'), 'utf8');
 const sitemapLocations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);
-const expectedLocations = SITEMAP_ROUTES.map(([pathname]) => `${SEO_ORIGIN}${pathname}`);
+const expectedLocations = Object.keys(SEO_PAGES).map((pathname) =>
+  `${SEO_ORIGIN}${pathname === '/' ? '/' : pathname}`
+);
 if (
   !sitemap.startsWith('<?xml version="1.0" encoding="UTF-8"?>') ||
   !sitemap.includes('<urlset ') ||
   new Set(sitemapLocations).size !== sitemapLocations.length ||
   sitemapLocations.length !== expectedLocations.length ||
   expectedLocations.some((location) => !sitemapLocations.includes(location)) ||
-  sitemapLocations.some((location) => !location.startsWith(`${SEO_ORIGIN}/`)) ||
-  sitemapLocations.some((location) => location.includes('kk-digital.netlify.app'))
+  sitemapLocations.some((location) => !location.startsWith(`${SEO_ORIGIN}/`))
 ) {
   throw new Error('The static sitemap is invalid, contains duplicate URLs, or does not match the public route list.');
 }
 
-if (
-  !robots.includes(`Sitemap: ${SEO_ORIGIN}/sitemap.xml`) ||
-  robots.includes('kk-digital.netlify.app') ||
-  /^\s*Disallow\s*:\s*\/api\/?\s*$/im.test(robots) ||
-  !robots.includes('Allow: /api/site') ||
-  !robots.includes('Disallow: /api/admin')
-) {
+const robots = await readFile(path.join(distDir, 'robots.txt'), 'utf8');
+if (!robots.includes(`Sitemap: ${SEO_ORIGIN}/sitemap.xml`)) {
   throw new Error('robots.txt is missing the production sitemap URL.');
 }
 

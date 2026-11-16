@@ -1,12 +1,11 @@
 
+const API_ORIGIN = 'https://kk-digital-studio-backend.onrender.com';
+
 const PROXY_BASE = '/api';
-const GET_TIMEOUT_MS = 60000;
-const REQUEST_TIMEOUT_MS = 30000;
-const GET_RETRIES = 1;
+const DIRECT_BASE = `${API_ORIGIN}/api`;
 
 let lastWakeTime = 0;
 let wakePromise = null;
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const qs = (params = {}) => {
   const p = new URLSearchParams();
@@ -21,7 +20,7 @@ export const qs = (params = {}) => {
   return s ? `?${s}` : '';
 };
 
-// Wake Render through the same-origin proxy before sending an admin request.
+// Wake Render before using the Netlify admin proxy.
 async function wakeBackend() {
   if (!import.meta.env.PROD) return;
 
@@ -30,11 +29,12 @@ async function wakeBackend() {
   }
 
   if (!wakePromise) {
-    wakePromise = fetchWithTimeout(`${PROXY_BASE}/health`, {
+    wakePromise = fetch(`${API_ORIGIN}/api/site`, {
       method: 'GET',
+      mode: 'no-cors',
       credentials: 'omit',
       cache: 'no-store',
-    }, GET_TIMEOUT_MS)
+    })
       .then(() => {
         lastWakeTime = Date.now();
       })
@@ -44,25 +44,6 @@ async function wakeBackend() {
   }
 
   return wakePromise;
-}
-
-async function fetchWithTimeout(url, options, timeoutMs) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      const timeoutError = new Error('The server is taking longer than usual to respond. Please try again.');
-      timeoutError.network = true;
-      timeoutError.timeout = true;
-      throw timeoutError;
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 async function request(path, { method = 'GET', body, formData } = {}) {
@@ -79,52 +60,36 @@ async function request(path, { method = 'GET', body, formData } = {}) {
     headers['X-Requested-With'] = 'kk-admin';
   }
 
-  const retryGet = method === 'GET';
-  const attempts = retryGet ? GET_RETRIES + 1 : 1;
+  const base =
+    import.meta.env.DEV || isAdmin
+      ? PROXY_BASE
+      : DIRECT_BASE;
+
   let res;
 
-  if (isAdmin && import.meta.env.PROD) {
-    try {
-      await wakeBackend();
-    } catch {
-      // Still attempt the original API request.
-    }
-  }
-
-  const options = {
-    method,
-    headers,
-    credentials: isAdmin ? 'include' : 'omit',
-    body: formData || (
-      body !== undefined ? JSON.stringify(body) : undefined
-    ),
-  };
-
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      res = await fetchWithTimeout(
-        PROXY_BASE + path,
-        options,
-        retryGet ? GET_TIMEOUT_MS : REQUEST_TIMEOUT_MS
-      );
-      if (retryGet && res.status >= 500 && attempt < attempts - 1) {
-        await delay(750);
-        continue;
+  try {
+    if (isAdmin && import.meta.env.PROD) {
+      try {
+        await wakeBackend();
+      } catch {
+        // Still attempt the original API request.
       }
-      break;
-    } catch (error) {
-      if (attempt >= attempts - 1) {
-        const networkError = new Error(
-          error.timeout
-            ? error.message
-            : 'Cannot reach the server. Please wait and try again.'
-        );
-        networkError.network = true;
-        networkError.timeout = Boolean(error.timeout);
-        throw networkError;
-      }
-      await delay(750);
     }
+
+    res = await fetch(base + path, {
+      method,
+      headers,
+      credentials: isAdmin ? 'include' : 'omit',
+      body: formData || (
+        body !== undefined ? JSON.stringify(body) : undefined
+      ),
+    });
+  } catch {
+    const err = new Error(
+      'Cannot reach the server. Please wait and try again.'
+    );
+    err.network = true;
+    throw err;
   }
 
   let data = null;

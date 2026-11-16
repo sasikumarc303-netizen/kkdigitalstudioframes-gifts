@@ -15,10 +15,9 @@ export const serviceIcon = (title = '') => {
 };
 
 export function ServiceCard({ service, delay = 0 }) {
-  const bookingLink = service.id ? `/booking?service=${service.id}` : '/services';
   return (
     <Reveal delay={delay} className="card service-card">
-      <Link to={bookingLink} className="service-card__media" aria-label={service.id ? `Book ${service.title}` : `View ${service.title}`}>
+      <Link to={`/booking?service=${service.id}`} className="service-card__media" aria-label={`Book ${service.title}`}>
         <Img src={service.image} alt={service.image ? service.title : ''} ratio="4/5" width={640} icon={serviceIcon(service.title)} label={service.title} />
       </Link>
       <div className="service-card__body">
@@ -53,7 +52,6 @@ export function ProductCard({ product, delay = 0 }) {
 
 export function PackageCard({ pkg, delay = 0 }) {
   const { money } = useSite();
-  const bookingLink = pkg.isLocalFallback ? '/contact' : `/booking?package=${encodeURIComponent(pkg.name)}`;
   return (
     <Reveal delay={delay} className={`card package-card ${pkg.popular ? 'is-popular' : ''}`}>
       {pkg.popular && <span className="package-card__flag">Most popular</span>}
@@ -66,9 +64,7 @@ export function PackageCard({ pkg, delay = 0 }) {
       <ul className="ticks">
         {pkg.features.map((f) => <li key={f}><Icon name="check" size={16} />{f}</li>)}
       </ul>
-      <Btn to={bookingLink} variant={pkg.popular ? 'primary' : 'outline'} block>
-        {pkg.isLocalFallback ? 'Ask about this package' : 'Book this package'}
-      </Btn>
+      <Btn to={`/booking?package=${encodeURIComponent(pkg.name)}`} variant={pkg.popular ? 'primary' : 'outline'} block>Book this package</Btn>
     </Reveal>
   );
 }

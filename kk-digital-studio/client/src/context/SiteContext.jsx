@@ -28,7 +28,7 @@ export function SiteProvider({ children }) {
     const waNumber = digits(contact?.whatsapp || contact?.phone);
     const telNumber = digits(contact?.phone || contact?.whatsapp);
     const symbol = config?.general?.currencySymbol || '₹';
-    const mapQuery = contact?.mapQuery || contact?.address || '';
+    const mapQuery = contact?.mapQuery || '12.5209761, 78.5493927';
     return {
       ...state,
       reload: load,
@@ -37,7 +37,7 @@ export function SiteProvider({ children }) {
       /** WhatsApp deep link with an optional pre-filled message. Empty string when no number has been configured. */
       waLink: (text = '') => (waNumber ? `https://wa.me/${waNumber}${text ? `?text=${encodeURIComponent(text)}` : ''}` : ''),
       telLink: () => (telNumber ? `tel:+${telNumber}` : ''),
-      mapsLink: () => (mapQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}` : ''),
+      mapsLink: () => contact?.mapUrl || (mapQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}` : ''),
       mapsEmbed: () => (mapQuery ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed` : ''),
       money: (n) => fmtMoney(n, symbol),
       symbol,

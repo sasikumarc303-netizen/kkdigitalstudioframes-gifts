@@ -33,7 +33,8 @@ export function ContactInfo() {
           <Card title="Address & map">
             <div className="a-form">
               <div className="a-form__item is-wide"><TextArea label="Studio address" rows={2} value={d.address} onChange={(v) => set('address', v)} /></div>
-              <div className="a-form__item is-wide"><TextField label="Map search text" value={d.mapQuery} onChange={(v) => set('mapQuery', v)} hint="What Google Maps should search for. Leave blank to use the address." /></div>
+              <div className="a-form__item is-wide"><TextField label="Map search text" value={d.mapQuery} onChange={(v) => set('mapQuery', v)} hint="What Google Maps should search for. Leave blank to use the studio map location." /></div>
+              <div className="a-form__item is-wide"><TextField label="Google Maps link" type="url" value={d.mapUrl} onChange={(v) => set('mapUrl', v)} hint="Used by the Get directions button. Leave blank to use the map search text." /></div>
             </div>
           </Card>
           <Card title="Opening hours">
