@@ -72,12 +72,13 @@ export function MasonryGallery({ items }) {
 export function ContactBlock({ wide = false }) {
   const { config, waLink, telLink, mapsLink, mapsEmbed, hasPhone } = useSite();
   const c = config.contact;
+  const directionsUrl = mapsLink();
   const embed = mapsEmbed();
   return (
     <div className={`contact-block ${wide ? 'contact-block--wide' : ''}`}>
       <div className="contact-block__info">
         <ul className="contact-list">
-          {c.address && <li><Icon name="pin" /><div><strong>Studio address</strong><span>{c.address}</span></div></li>}
+          {c.address && <li><Icon name="pin" /><div><strong>Studio address</strong>{directionsUrl ? <a href={directionsUrl} target="_blank" rel="noopener noreferrer">{c.address}</a> : <span>{c.address}</span>}</div></li>}
           {hasPhone && c.phone && <li><Icon name="phone" /><div><strong>Call us</strong><a href={telLink()}>{c.phone}</a></div></li>}
           {waLink() && <li><Icon name="whatsapp" /><div><strong>WhatsApp</strong><a href={waLink('Hello, I would like to make an enquiry.')} target="_blank" rel="noopener noreferrer">Message us</a></div></li>}
           {c.email && <li><Icon name="mail" /><div><strong>Email</strong><a href={`mailto:${c.email}`}>{c.email}</a></div></li>}
@@ -86,7 +87,7 @@ export function ContactBlock({ wide = false }) {
           )}
         </ul>
         <div className="contact-block__actions">
-          {mapsLink() && <Btn href={mapsLink()} icon="pin" variant="primary">Get directions</Btn>}
+          {directionsUrl && <Btn href={directionsUrl} icon="pin" variant="primary">Get directions</Btn>}
           {hasPhone && <Btn href={telLink()} icon="phone" variant="outline">Call now</Btn>}
           {waLink() && <Btn href={waLink('Hello, I would like to make an enquiry.')} icon="whatsapp" variant="outline">WhatsApp</Btn>}
         </div>
