@@ -77,24 +77,25 @@ export function ContactBlock({ wide = false }) {
   return (
     <div className={`contact-block ${wide ? 'contact-block--wide' : ''}`}>
       <div className="contact-block__info">
+        {!wide && <h2>Find Us in Achamangalam</h2>}
         <ul className="contact-list">
-          {c.address && <li><Icon name="pin" /><div><strong>Studio address</strong>{directionsUrl ? <a href={directionsUrl} target="_blank" rel="noopener noreferrer">{c.address}</a> : <span>{c.address}</span>}</div></li>}
+          {c.address && <li><Icon name="pin" /><div><strong>Studio address</strong><span>{config.general.businessName}</span>{directionsUrl ? <a href={directionsUrl} target="_blank" rel="noopener noreferrer">{c.address}{c.address.endsWith('.') ? '' : '.'}</a> : <span>{c.address}{c.address.endsWith('.') ? '' : '.'}</span>}</div></li>}
           {hasPhone && c.phone && <li><Icon name="phone" /><div><strong>Call us</strong><a href={telLink()}>{c.phone}</a></div></li>}
-          {waLink() && <li><Icon name="whatsapp" /><div><strong>WhatsApp</strong><a href={waLink('Hello, I would like to make an enquiry.')} target="_blank" rel="noopener noreferrer">Message us</a></div></li>}
+          {waLink() && <li><Icon name="whatsapp" /><div><strong>WhatsApp</strong><a href={waLink()} target="_blank" rel="noopener noreferrer">Message Us</a></div></li>}
           {c.email && <li><Icon name="mail" /><div><strong>Email</strong><a href={`mailto:${c.email}`}>{c.email}</a></div></li>}
           {c.hours.length > 0 && (
             <li><Icon name="clock" /><div><strong>Opening hours</strong>{c.hours.map((h, i) => <span key={i}>{h.days}: {h.time}</span>)}</div></li>
           )}
         </ul>
         <div className="contact-block__actions">
-          {directionsUrl && <Btn href={directionsUrl} icon="pin" variant="primary">Get directions</Btn>}
-          {hasPhone && <Btn href={telLink()} icon="phone" variant="outline">Call now</Btn>}
-          {waLink() && <Btn href={waLink('Hello, I would like to make an enquiry.')} icon="whatsapp" variant="outline">WhatsApp</Btn>}
+          {directionsUrl && <Btn href={directionsUrl} icon="pin" variant="primary">Get Directions</Btn>}
+          {hasPhone && <Btn href={telLink()} icon="phone" variant="outline">Call Now</Btn>}
+          {waLink() && <Btn href={waLink()} icon="whatsapp" variant="outline">WhatsApp</Btn>}
         </div>
       </div>
       {embed && (
         <div className="contact-block__map">
-          <iframe title="Studio location on Google Maps" src={embed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
+          <iframe title="KK Digital Studio Frames & Gifts on Google Maps" src={embed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allow="accelerometer; gyroscope; fullscreen" />
         </div>
       )}
     </div>

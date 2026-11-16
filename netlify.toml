@@ -1,4 +1,4 @@
 [build]
   base = "kk-digital-studio/client"
-  command = "npm run build"
+  command = "npm run build && node scripts/generate-seo-pages.js"
   publish = "dist"

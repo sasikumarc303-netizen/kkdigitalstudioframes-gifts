@@ -18,11 +18,11 @@ const abs = (u) => (!u ? '' : /^https?:/i.test(u) ? u : `${window.location.origi
 const PAGE_FALLBACKS = {
   '/': {
     title: '{brand} | Photography, Custom Gifts & Photo Frames',
-    description: 'KK Digital Studio offers professional photography, customized gifts, personalized photo frames and studio services. Explore our portfolio and book your photography session.',
+    description: 'KK Digital Studio Frames & Gifts offers photography, customized gifts and photo frames in Achamangalam, Tirupathur, Tamil Nadu 635651, India.',
   },
   '/about': {
     title: 'About {brand} | Photography Studio in Tirupathur',
-    description: 'Learn about KK Digital Studio, a photography studio in Tirupathur, and our personal approach to capturing your moments.',
+    description: 'Learn about KK Digital Studio Frames & Gifts in Achamangalam, Tirupathur, and our personal approach to photography.',
   },
   '/services': {
     title: 'Photography Services | {brand}',
@@ -46,7 +46,7 @@ const PAGE_FALLBACKS = {
   },
   '/contact': {
     title: 'Contact {brand} | Tirupathur',
-    description: 'Contact KK Digital Studio in Tirupathur with questions about a photography session, print or frame.',
+    description: 'Visit KK Digital Studio Frames & Gifts in Achamangalam, Tirupathur, Tamil Nadu 635651, India, or contact us about a session, print or frame.',
   },
 };
 
@@ -60,7 +60,7 @@ export default function Seo({ title, description, image, noindex = false }) {
 
   useEffect(() => {
     const page = config?.seo?.pages?.[pathname] || {};
-    const brand = config?.general?.businessName || 'KK Digital Studio';
+    const brand = config?.general?.businessName || 'KK Digital Studio Frames & Gifts';
     const fallback = PAGE_FALLBACKS[pathname];
     const t = title || page.title || fallback?.title.replace('{brand}', brand) || brand;
     const d = description || page.description || fallback?.description || '';

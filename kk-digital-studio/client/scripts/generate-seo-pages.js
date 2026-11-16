@@ -101,7 +101,7 @@ function renderPublicFallback(pathname) {
   if (pathname === '/contact') {
     return `${hero('Get in touch', 'Contact & location', 'Questions about a session, a print or a frame? Send us a message and we’ll respond as soon as we can.')}
       <main id="main" class="page"><section class="section section--ivory"><div class="container">
-        <h2>Contact KK Digital Studio</h2><p>${escapeText(DEFAULT_CONFIG.contact.address)}</p>
+        <h2>Contact ${escapeText(DEFAULT_CONFIG.general.businessName)}</h2><p>${escapeText(DEFAULT_CONFIG.contact.address)}</p>
         <p>Ask us about photography sessions, photo printing, framing or customized gifts.</p>
       </div></section></main>`;
   }
@@ -116,14 +116,21 @@ function renderPage(pathname, { title, description }) {
     '@graph': [
       {
         '@type': 'WebSite',
-        name: 'KK Digital Studio',
+        name: DEFAULT_CONFIG.general.businessName,
         url: `${SEO_ORIGIN}/`,
         description: SITE_DESCRIPTION,
       },
       {
         '@type': 'Organization',
-        name: 'KK Digital Studio',
+        name: DEFAULT_CONFIG.general.businessName,
         url: `${SEO_ORIGIN}/`,
+      },
+      {
+        '@type': 'LocalBusiness',
+        name: DEFAULT_CONFIG.general.businessName,
+        url: `${SEO_ORIGIN}/`,
+        address: DEFAULT_CONFIG.contact.address,
+        hasMap: DEFAULT_CONFIG.contact.mapUrl,
       },
     ],
   };
@@ -131,7 +138,7 @@ function renderPage(pathname, { title, description }) {
     `<meta name="description" content="${escapeHtml(description)}" />`,
     `<link rel="canonical" href="${escapeHtml(canonical)}" />`,
     '<meta property="og:type" content="website" />',
-    '<meta property="og:site_name" content="KK Digital Studio" />',
+    `<meta property="og:site_name" content="${escapeHtml(DEFAULT_CONFIG.general.businessName)}" />`,
     `<meta property="og:title" content="${escapeHtml(title)}" />`,
     `<meta property="og:description" content="${escapeHtml(description)}" />`,
     `<meta property="og:url" content="${escapeHtml(canonical)}" />`,

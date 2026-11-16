@@ -92,6 +92,7 @@ if (fs.existsSync(indexFile)) {
       description: cfg.general.tagline,
       logo: abs(cfg.general.logo || '/images/kk-digital-logo.jpg'),
       address: cfg.contact.address,
+      hasMap: cfg.contact.mapUrl,
       ...(cfg.contact.phone ? { telephone: cfg.contact.phone } : {}),
       ...(og ? { image: og } : {}),
       sameAs: Object.values(cfg.contact.social).filter(Boolean),

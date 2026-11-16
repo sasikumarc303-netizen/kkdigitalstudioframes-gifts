@@ -111,7 +111,11 @@
 @media (min-width: 960px) { .contact-block--wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: stretch; } .contact-block--wide .contact-block__map { aspect-ratio: auto; min-height: 380px; } }
 .contact-block > * { min-width: 0; }
 .contact-list { display: grid; gap: 1.3rem; } .contact-list li { display: flex; gap: 1rem; align-items: flex-start; } .contact-list .icon { color: var(--sage); margin-top: 0.2rem; }
-.contact-list div { display: grid; } .contact-list strong { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; } .contact-list span, .contact-list a { color: var(--text-soft); }
-.contact-block__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; }
-@media (max-width: 479px) { .contact-block__actions .btn { width: 100%; } }
+.contact-list li > div { display: grid; min-width: 0; } .contact-list strong { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; } .contact-list span, .contact-list a { color: var(--text-soft); overflow-wrap: anywhere; }
+.contact-list a, .footer__contact a { text-underline-offset: 0.2em; transition: color 0.2s ease; }
+.contact-list a:hover, .footer__contact a:hover { color: var(--forest); }
+.contact-list a:focus-visible, .footer__contact a:focus-visible, .contact-block__actions .btn:focus-visible { outline: 3px solid var(--sage); outline-offset: 3px; }
+.contact-block__actions { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.6rem; margin-top: 1.5rem; }
+.contact-block__actions .btn { flex: 1 1 138px; min-height: 48px; }
+@media (max-width: 479px) { .contact-block__actions .btn { flex: 1 1 100%; width: 100%; } }
 .contact-block__map { border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); aspect-ratio: 4 / 3; background: var(--sand-soft); min-height: 260px; } .contact-block__map iframe { width: 100%; height: 100%; border: 0; }

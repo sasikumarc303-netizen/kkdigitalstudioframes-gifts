@@ -28,7 +28,7 @@ export function SiteProvider({ children }) {
     const waNumber = digits(contact?.whatsapp || contact?.phone);
     const telNumber = digits(contact?.phone || contact?.whatsapp);
     const symbol = config?.general?.currencySymbol || '₹';
-    const mapQuery = contact?.mapQuery || '12.5209761, 78.5493927';
+    const mapQuery = contact?.mapQuery || contact?.address || '';
     return {
       ...state,
       reload: load,
@@ -38,10 +38,10 @@ export function SiteProvider({ children }) {
       waLink: (text = '') => (waNumber ? `https://wa.me/${waNumber}${text ? `?text=${encodeURIComponent(text)}` : ''}` : ''),
       telLink: () => (telNumber ? `tel:+${telNumber}` : ''),
       mapsLink: () => contact?.mapUrl || (mapQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}` : ''),
-      mapsEmbed: () => (mapQuery ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed` : ''),
+      mapsEmbed: () => contact?.mapEmbedUrl || (mapQuery ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed` : ''),
       money: (n) => fmtMoney(n, symbol),
       symbol,
-      brand: config?.general?.businessName || 'KK Digital Studio',
+      brand: config?.general?.businessName || 'KK Digital Studio Frames & Gifts',
     };
   }, [state, load]);
 

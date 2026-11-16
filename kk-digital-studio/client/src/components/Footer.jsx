@@ -41,7 +41,7 @@ export default function Footer() {
         <div>
           <h3 className="footer__title">Visit & contact</h3>
           <ul className="footer__contact">
-            {c.address && <li><Icon name="pin" size={18} /><span>{c.address}</span></li>}
+            {c.address && <li><Icon name="pin" size={18} />{mapsLink() ? <a href={mapsLink()} target="_blank" rel="noopener noreferrer">{c.address}</a> : <span>{c.address}</span>}</li>}
             {hasPhone && c.phone && <li><Icon name="phone" size={18} /><a href={telLink()}>{c.phone}</a></li>}
             {waLink() && <li><Icon name="whatsapp" size={18} /><a href={waLink()} target="_blank" rel="noopener noreferrer">WhatsApp us</a></li>}
             {c.email && <li><Icon name="mail" size={18} /><a href={`mailto:${c.email}`}>{c.email}</a></li>}
