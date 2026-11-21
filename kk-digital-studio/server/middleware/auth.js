@@ -4,6 +4,7 @@ import AdminUser from '../models/AdminUser.js';
 import { ApiError, asyncHandler } from '../utils/helpers.js';
 
 export const COOKIE_NAME = 'kk_admin';
+const sameSite = env.isProd && env.cookieSecure ? 'none' : 'strict';
 
 export function issueSession(res, user) {
   const token = jwt.sign({ sub: String(user._id), v: user.tokenVersion || 0 }, env.jwtSecret, {
@@ -12,14 +13,14 @@ export function issueSession(res, user) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     secure: env.cookieSecure,
-    sameSite: 'strict',
+    sameSite,
     maxAge: env.jwtExpiresHours * 3600 * 1000,
     path: '/',
   });
 }
 
 export const clearSession = (res) =>
-  res.clearCookie(COOKIE_NAME, { httpOnly: true, secure: env.cookieSecure, sameSite: 'strict', path: '/' });
+  res.clearCookie(COOKIE_NAME, { httpOnly: true, secure: env.cookieSecure, sameSite, path: '/' });
 
 /** Server-side authentication: verifies cookie JWT, loads the user fresh from the DB on every request. */
 export const requireAuth = asyncHandler(async (req, _res, next) => {

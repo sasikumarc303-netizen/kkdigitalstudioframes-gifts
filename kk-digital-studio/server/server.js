@@ -45,12 +45,22 @@ app.use(
   })
 );
 app.use(compression());
-if (env.clientOrigins.length) app.use(cors({ origin: env.clientOrigins, credentials: true }));
+const allowedClientOrigins = [...new Set([
+  ...env.clientOrigins,
+  'https://kk-digital-studio.pages.dev',
+])];
+app.use(cors({ origin: allowedClientOrigins, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
 app.use('/api', (_req, res, next) => {
   res.set('X-Robots-Tag', 'noindex, nofollow');
+  next();
+});
+app.use('/api', (req, res, next) => {
+  if (req.path !== '/admin' && !req.path.startsWith('/admin/')) {
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
   next();
 });
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false }));

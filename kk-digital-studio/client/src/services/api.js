@@ -1,11 +1,11 @@
 
-const API_ORIGIN = 'https://kk-digital-studio-backend.onrender.com';
+const API_ORIGIN = (
+  import.meta.env.VITE_API_URL ||
+  'https://kk-digital-studio-backend.onrender.com'
+).replace(/\/+$/, '').replace(/\/api$/i, '');
 
 const PROXY_BASE = '/api';
 const DIRECT_BASE = `${API_ORIGIN}/api`;
-
-let lastWakeTime = 0;
-let wakePromise = null;
 
 export const qs = (params = {}) => {
   const p = new URLSearchParams();
@@ -19,32 +19,6 @@ export const qs = (params = {}) => {
   const s = p.toString();
   return s ? `?${s}` : '';
 };
-
-// Wake Render before using the Netlify admin proxy.
-async function wakeBackend() {
-  if (!import.meta.env.PROD) return;
-
-  if (Date.now() - lastWakeTime < 10 * 60 * 1000) {
-    return;
-  }
-
-  if (!wakePromise) {
-    wakePromise = fetch(`${API_ORIGIN}/api/site`, {
-      method: 'GET',
-      mode: 'no-cors',
-      credentials: 'omit',
-      cache: 'no-store',
-    })
-      .then(() => {
-        lastWakeTime = Date.now();
-      })
-      .finally(() => {
-        wakePromise = null;
-      });
-  }
-
-  return wakePromise;
-}
 
 async function request(path, { method = 'GET', body, formData } = {}) {
   const isAdmin = path.startsWith('/admin');
@@ -60,22 +34,11 @@ async function request(path, { method = 'GET', body, formData } = {}) {
     headers['X-Requested-With'] = 'kk-admin';
   }
 
-  const base =
-    import.meta.env.DEV || isAdmin
-      ? PROXY_BASE
-      : DIRECT_BASE;
+  const base = import.meta.env.DEV ? PROXY_BASE : DIRECT_BASE;
 
   let res;
 
   try {
-    if (isAdmin && import.meta.env.PROD) {
-      try {
-        await wakeBackend();
-      } catch {
-        // Still attempt the original API request.
-      }
-    }
-
     res = await fetch(base + path, {
       method,
       headers,

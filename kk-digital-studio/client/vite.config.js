@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// The API runs separately in development; in production Express serves the built client and the API from one origin.
+// API_URL configures the dev/preview proxy; VITE_API_URL configures production browser requests in src/services/api.js.
 const API = process.env.API_URL || 'http://localhost:5000';
 
 export default defineConfig({

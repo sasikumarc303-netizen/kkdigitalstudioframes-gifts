@@ -108,6 +108,7 @@ Copy `.env.example` to `.env` (project root or `server/`). Every variable is doc
 | `SMTP_*` | Enables emailing password-reset links |
 | `COOKIE_SECURE`, `TRUST_PROXY` | Default to `true` in production (HTTPS + reverse proxy) |
 | `PAYMENT_PROVIDER` | `none` (default) |
+| `VITE_API_URL` | Frontend API origin (for example, `https://kk-digital-studio-backend.onrender.com`); set in Cloudflare Pages build variables, without `/api` |
 
 ---
 
@@ -240,6 +241,12 @@ Then add a certificate with Let’s Encrypt (`certbot --nginx`). `TRUST_PROXY` a
 - Use **MongoDB Atlas** and **Cloudinary**: most platforms have ephemeral disks, so local uploads would be lost on redeploy.
 - Run `npm run seed` once from the platform shell.
 
+### Cloudflare Pages frontend with a separate Render API
+- Set the Cloudflare Pages build variable `VITE_API_URL` to `https://kk-digital-studio-backend.onrender.com` (the origin only; do not append `/api`). The shared API client adds `/api` and uses this base for public requests, admin requests, and uploads. The Render origin is the fallback if the variable is omitted.
+- On Render, keep `COOKIE_SECURE=true` and `TRUST_PROXY=true`. Set `CLIENT_URL` to the Cloudflare Pages origin and retain any other already-authorized origins as comma-separated entries.
+- Admin sessions use `SameSite=None; Secure` cookies for this cross-site setup. The cookie remains HTTP-only; exact-origin credentialed CORS and the existing CSRF header remain enabled. Browser privacy settings that block third-party cookies can still prevent cross-site admin sessions; using a custom frontend domain on the same site as the API is the most reliable option.
+- The existing `client/public/_redirects` SPA fallback serves `/index.html` for deep links such as `/admin` and `/photo-frames/example`.
+
 ### Backups & updates
 Back up the MongoDB database regularly (Atlas has built-in backups). To update: pull the new code, `npm run install:all`, `npm run build`, restart.
 
@@ -248,7 +255,7 @@ Back up the MongoDB database regularly (Atlas has built-in backups). To update: 
 ## Security
 
 - Passwords are hashed with **bcrypt** (cost 12, via `bcryptjs`); policy 10+ characters with a letter and a number.
-- Admin sessions: **JWT in an HTTP-only, SameSite=Strict cookie** (Secure in production), 8-hour expiry, invalidated on password change/role change.
+- Admin sessions: **JWT in an HTTP-only cookie**, 8-hour expiry, invalidated on password change/role change. SameSite is Strict for local/non-cross-site use; separate-origin production uses SameSite=None with Secure.
 - **Server-side authorization** on every admin route (role + per-module permissions). Hiding a menu item is cosmetic only.
 - Brute-force protection: rate limits on login/reset, 5 failed logins lock the account for 15 minutes, timing-equalised responses.
 - CSRF defence: state-changing admin calls require a custom header plus SameSite cookie.
