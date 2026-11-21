@@ -13,7 +13,7 @@ import publicRoutes from './routes/public.js';
 import adminRoutes from './routes/admin.js';
 import { sitemap, robots } from './controllers/seo.js';
 import { errorHandler, notFoundApi } from './middleware/errors.js';
-import { UPLOAD_ROOT } from './services/media.js';
+import { PUBLIC_MEDIA_ROOT } from './services/media.js';
 import { getConfig, ensureConfigExists } from './services/siteConfig.js';
 import { DEFAULT_CONFIG } from './services/defaults.js';
 import Product from './models/Product.js';
@@ -65,6 +65,11 @@ app.use('/api', (req, res, next) => {
 });
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, db: mongoose.connection.readyState === 1 }));
+app.use('/api/media/previews', express.static(PUBLIC_MEDIA_ROOT, {
+  maxAge: '1y',
+  immutable: true,
+  setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
+}));
 app.use('/api/admin', adminRoutes);
 app.use('/api', publicRoutes);
 app.use('/api', notFoundApi);
@@ -72,8 +77,7 @@ app.use('/api', notFoundApi);
 app.get('/sitemap.xml', sitemap);
 app.get('/robots.txt', robots);
 
-// Locally stored uploads (when Cloudinary is not configured). Only validated images/videos are ever written here.
-app.use('/uploads', express.static(UPLOAD_ROOT, { maxAge: '30d', setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff') }));
+app.use('/uploads', (_req, res) => res.sendStatus(404));
 
 // ---- production: serve the built React app with per-route SEO tags injected for crawlers ----
 const distDir = path.join(PROJECT_ROOT, 'client', 'dist');

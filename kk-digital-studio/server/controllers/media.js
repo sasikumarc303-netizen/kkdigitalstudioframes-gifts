@@ -1,8 +1,14 @@
 import mongoose from 'mongoose';
+import path from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import { v2 as cloudinary } from 'cloudinary';
 import Media from '../models/Media.js';
 import { ApiError, asyncHandler, escapeRegex, parsePaging } from '../utils/helpers.js';
 import { validate } from '../middleware/validate.js';
-import { storeUpload, removeStored, findMediaUsage } from '../services/media.js';
+import { env } from '../config/env.js';
+import { storeUpload, removeStored, findMediaUsage, PRIVATE_UPLOAD_ROOT, resolveStoredPath } from '../services/media.js';
+import { replaceMediaReferences } from '../services/mediaReferences.js';
 import { logActivity } from '../services/activity.js';
 import { getConfig, patchConfigPath } from '../services/siteConfig.js';
 
@@ -26,6 +32,41 @@ export const list = asyncHandler(async (req, res) => {
   });
 });
 
+export const downloadOriginal = asyncHandler(async (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) throw new ApiError(400, 'Invalid media id');
+  const media = await Media.findById(req.params.id);
+  if (!media) throw new ApiError(404, 'Media not found');
+  if (!media.originalProvider) throw new ApiError(409, 'This original has not been migrated to private storage yet');
+
+  const filename = media.originalFilename || `${media.title || 'original'}.${media.type === 'video' ? 'mp4' : 'jpg'}`;
+  res.set('Cache-Control', 'private, no-store');
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Content-Type', media.originalMime || media.mime || 'application/octet-stream');
+  if (media.originalBytes) res.set('Content-Length', String(media.originalBytes));
+
+  if (media.originalProvider === 'local') {
+    const originalPath = resolveStoredPath(PRIVATE_UPLOAD_ROOT, media.originalPath);
+    return res.download(originalPath, filename, (error) => {
+      if (error && !res.headersSent) next(error);
+    });
+  }
+
+  if (!env.cloudinaryEnabled) throw new ApiError(503, 'Cloudinary is not configured to serve this original');
+  const format = path.extname(filename).slice(1);
+  const downloadUrl = cloudinary.utils.private_download_url(media.originalPublicId, format, {
+    resource_type: media.type === 'video' ? 'video' : 'image',
+    type: 'authenticated',
+    expires_at: Math.floor(Date.now() / 1000) + 60,
+    attachment: filename,
+    secure: true,
+  });
+  const upstream = await fetch(downloadUrl);
+  if (!upstream.ok || !upstream.body) throw new ApiError(502, 'The private original could not be retrieved from storage');
+  res.attachment(filename);
+  res.set('Content-Type', media.originalMime || media.mime || 'application/octet-stream');
+  await pipeline(Readable.fromWeb(upstream.body), res);
+});
+
 export const upload = asyncHandler(async (req, res) => {
   const files = req.files || [];
   if (!files.length) throw new ApiError(400, 'No file received');
@@ -33,9 +74,11 @@ export const upload = asyncHandler(async (req, res) => {
   const created = [];
   const errors = [];
   for (const file of files) {
+    let stored;
+    let media;
     try {
-      const stored = await storeUpload(file, { folder });
-      const media = await Media.create({
+      stored = await storeUpload(file, { folder });
+      media = await Media.create({
         ...stored,
         alt: String(req.body.alt || '').slice(0, 300),
         purpose: stored.type === 'video' && ['hero', 'promo'].includes(req.body.purpose) ? req.body.purpose : 'general',
@@ -43,6 +86,8 @@ export const upload = asyncHandler(async (req, res) => {
       });
       created.push(media);
     } catch (e) {
+      if (media) await media.deleteOne();
+      if (stored) await removeStored(stored);
       errors.push({ file: file.originalname, message: e.message });
     }
   }
@@ -76,15 +121,34 @@ export const replace = asyncHandler(async (req, res) => {
     throw new ApiError(415, `Replacement must be a ${m.type} file`);
   }
   const oldUrl = m.url;
-  const old = { provider: m.provider, publicId: m.publicId, type: m.type };
-  Object.assign(m, { url: stored.url, provider: stored.provider, publicId: stored.publicId, bytes: stored.bytes, mime: stored.mime, width: stored.width, height: stored.height, duration: stored.duration });
-  if (m.type === 'video' && stored.poster) m.poster = stored.poster;
+  const oldPoster = m.poster;
+  const old = {
+    provider: m.provider,
+    publicId: m.publicId,
+    posterPublicId: m.posterPublicId,
+    originalProvider: m.originalProvider,
+    originalPublicId: m.originalPublicId,
+    originalPath: m.originalPath,
+    type: m.type,
+  };
+  const preserved = { title: m.title, alt: m.alt, folder: m.folder, purpose: m.purpose, uploadedBy: m.uploadedBy };
+  Object.assign(m, stored, preserved, {
+    legacyProvider: old.provider,
+    legacyPublicId: old.publicId,
+    legacyType: old.type,
+    legacyUrl: oldUrl,
+    legacyPoster: oldPoster,
+  });
   await m.save();
-  // Anything that pointed at the old URL now points at the new asset.
-  const cfg = await getConfig();
-  if (cfg.homepage.hero.video === oldUrl) await patchConfigPath('homepage.hero.video', m.url);
-  if (cfg.homepage.hero.videoMobile === oldUrl) await patchConfigPath('homepage.hero.videoMobile', m.url);
+  await replaceMediaReferences(oldUrl, m.url);
+  if (oldPoster && stored.poster) await replaceMediaReferences(oldPoster, stored.poster);
   await removeStored(old);
+  m.legacyProvider = undefined;
+  m.legacyPublicId = '';
+  m.legacyType = undefined;
+  m.legacyUrl = '';
+  m.legacyPoster = '';
+  await m.save();
   logActivity(req, { action: 'update', entity: 'media', entityId: m._id, summary: `Replaced file for “${m.title}”` });
   res.json(m);
 });

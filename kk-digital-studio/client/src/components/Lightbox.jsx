@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Icon from './Icon.jsx';
+import ProtectedMedia from './ProtectedMedia.jsx';
 import { optimizeImage } from '../services/format.js';
 import { useLockBody } from '../hooks/useMedia.js';
 
@@ -83,20 +84,21 @@ export default function Lightbox({ items, index, onClose, onIndex }) {
           <div className="lightbox__stage" onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
             {total > 1 && <button type="button" className="lightbox__nav lightbox__nav--prev" onClick={() => go(-1)} aria-label="Previous photo"><Icon name="chevronLeft" size={28} /></button>}
             <AnimatePresence mode="wait">
-              <motion.img
-                key={current.id || current.image}
-                src={optimizeImage(current.image, 1800)}
-                alt={current.title || current.caption || 'Photograph'}
-                className={`lightbox__img ${zoom ? 'is-zoomed' : ''}`}
-                style={{ transformOrigin: origin }}
-                onClick={toggleZoom}
-                onMouseMove={onMove}
-                draggable={false}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              />
+              <ProtectedMedia key={current.id || current.image} className="lightbox__image-protection">
+                <motion.img
+                  src={optimizeImage(current.image, 1800)}
+                  alt={current.title || current.caption || 'Photograph'}
+                  className={`lightbox__img ${zoom ? 'is-zoomed' : ''}`}
+                  style={{ transformOrigin: origin }}
+                  onClick={toggleZoom}
+                  onMouseMove={onMove}
+                  draggable={false}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                />
+              </ProtectedMedia>
             </AnimatePresence>
             {total > 1 && <button type="button" className="lightbox__nav lightbox__nav--next" onClick={() => go(1)} aria-label="Next photo"><Icon name="chevronRight" size={28} /></button>}
           </div>

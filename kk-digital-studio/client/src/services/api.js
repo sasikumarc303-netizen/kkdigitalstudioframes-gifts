@@ -20,7 +20,7 @@ export const qs = (params = {}) => {
   return s ? `?${s}` : '';
 };
 
-async function request(path, { method = 'GET', body, formData } = {}) {
+async function request(path, { method = 'GET', body, formData, responseType } = {}) {
   const isAdmin = path.startsWith('/admin');
 
   const headers = {};
@@ -56,6 +56,8 @@ async function request(path, { method = 'GET', body, formData } = {}) {
   }
 
   let data = null;
+
+  if (res.ok && responseType === 'blob') return res.blob();
 
   try {
     data = await res.json();
@@ -99,4 +101,6 @@ export const api = {
     request(p, { method: 'DELETE' }),
   upload: (p, formData) =>
     request(p, { method: 'POST', formData }),
+  download: (p) =>
+    request(p, { responseType: 'blob' }),
 };

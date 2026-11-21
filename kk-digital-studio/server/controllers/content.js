@@ -6,7 +6,7 @@ import Category from '../models/Category.js';
 import GalleryImage from '../models/GalleryImage.js';
 import Product from '../models/Product.js';
 import Testimonial from '../models/Testimonial.js';
-import { storeUpload } from '../services/media.js';
+import { storeUpload, removeStored } from '../services/media.js';
 import Media from '../models/Media.js';
 import { logActivity } from '../services/activity.js';
 
@@ -60,13 +60,17 @@ gallery.bulkUpload = asyncHandler(async (req, res) => {
   const created = [];
   const errors = [];
   for (const file of files) {
+    let stored;
+    let media;
     try {
-      const stored = await storeUpload(file, { folder: 'gallery' });
+      stored = await storeUpload(file, { folder: 'gallery' });
       if (stored.type !== 'image') throw new ApiError(415, `"${file.originalname}" is not an image`);
-      const media = await Media.create({ ...stored, uploadedBy: req.user._id });
+      media = await Media.create({ ...stored, uploadedBy: req.user._id });
       const doc = await GalleryImage.create({ title: media.title, image: media.url, width: media.width, height: media.height, category, published });
       created.push(doc);
     } catch (e) {
+      if (media) await media.deleteOne();
+      if (stored) await removeStored(stored);
       errors.push({ file: file.originalname, message: e.message });
     }
   }

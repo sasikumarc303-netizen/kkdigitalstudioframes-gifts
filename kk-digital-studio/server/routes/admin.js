@@ -85,6 +85,7 @@ r.put('/customers/:id', requirePermission('customers'), customers.update);
 r.delete('/customers/:id', requirePermission('customers'), customers.remove);
 
 // media library + videos (both use the same store; permission differs by area)
+r.get('/media/:id/original', requirePermission('media', 'videos', 'gallery', 'homepage', 'services', 'packages', 'products', 'testimonials', 'settings', 'seo'), media.downloadOriginal);
 r.get('/media', requirePermission('media', 'videos', 'gallery', 'homepage', 'services', 'packages', 'products', 'testimonials', 'settings', 'seo'), media.list);
 r.post('/media', requirePermission('media', 'videos', 'homepage', 'products', 'services', 'packages', 'testimonials', 'settings', 'seo', 'gallery'), upload.array('files', 20), media.upload);
 r.put('/media/:id', requirePermission('media', 'videos'), media.update);

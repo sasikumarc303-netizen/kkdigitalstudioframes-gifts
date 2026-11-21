@@ -37,6 +37,7 @@ export const env = {
   jwtExpiresHours: int(process.env.JWT_EXPIRES_HOURS, 8),
   // Public URL of the site (used for sitemap, absolute links in emails)
   siteUrl: (process.env.SITE_URL || `http://localhost:${int(process.env.PORT, 5000)}`).replace(/\/+$/, ''),
+  mediaBaseUrl: (process.env.MEDIA_BASE_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, ''),
   // Extra origins allowed to call the API with cookies (only needed if the client is hosted on another origin)
   clientOrigins: list(process.env.CLIENT_URL),
   cookieSecure: bool(process.env.COOKIE_SECURE, isProd),
@@ -48,6 +49,10 @@ export const env = {
   },
   maxImageMB: int(process.env.MAX_IMAGE_MB, 10),
   maxVideoMB: int(process.env.MAX_VIDEO_MB, 100),
+  mediaWatermarkText: String(process.env.MEDIA_WATERMARK_TEXT || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40) || '© KK DIGITAL STUDIO',
   smtp: {
     host: process.env.SMTP_HOST || '',
     port: int(process.env.SMTP_PORT, 587),

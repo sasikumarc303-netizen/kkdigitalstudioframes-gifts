@@ -4,6 +4,7 @@ import Icon from './Icon.jsx';
 import Lightbox from './Lightbox.jsx';
 import Reveal, { ImageReveal } from './Reveal.jsx';
 import { Btn } from './Buttons.jsx';
+import ProtectedMedia from './ProtectedMedia.jsx';
 import { useSite } from '../context/SiteContext.jsx';
 
 export function PageHero({ eyebrow, title, text, children }) {
@@ -52,7 +53,9 @@ export function MasonryGallery({ items }) {
         {items.map((g, i) => (
           <Reveal key={g.id} className="masonry__item" delay={(i % 3) * 0.06} y={20}>
             <button type="button" className="masonry__btn" onClick={() => setIndex(i)} aria-label={`Open photo${g.title ? `: ${g.title}` : ''}`}>
-              <Img src={g.image} alt={g.title || g.caption || 'Photograph'} ratio={g.width && g.height ? `${g.width}/${g.height}` : '4/5'} width={720} sizes="(max-width: 600px) 100vw, (max-width: 1024px) 50vw, 33vw" />
+              <ProtectedMedia className="masonry__protection">
+                <Img src={g.image} alt={g.title || g.caption || 'Photograph'} ratio={g.width && g.height ? `${g.width}/${g.height}` : '4/5'} width={720} sizes="(max-width: 600px) 100vw, (max-width: 1024px) 50vw, 33vw" />
+              </ProtectedMedia>
               <span className="masonry__zoom"><Icon name="zoom" size={20} /></span>
               {(g.title || g.category?.name) && (
                 <span className="masonry__cap">

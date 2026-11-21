@@ -86,6 +86,7 @@ Useful commands:
 | `npm run seed` | Creates the first superadmin, categories, the 14 photography services, three starter packages and four frame products. Safe to re-run: it never overwrites existing content |
 | `npm run seed:demo` | Same, plus **clearly sample** prices and stock on the frame products so you can try the shop. Replace them in the admin before going live |
 | `npm run create-admin` | Creates (or resets the password of) an admin account from `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
+| `npm --prefix server run migrate:media` | One-time conversion of existing uploads to private originals and watermarked previews; back up first |
 | `npm run build` | Builds the React app into `client/dist` |
 | `npm start` | Starts the production server (serves the API **and** the built website on one port) |
 | `npm --prefix server run check` | Prints storage/SMTP status and document counts |
@@ -105,6 +106,8 @@ Copy `.env.example` to `.env` (project root or `server/`). Every variable is doc
 | `ADMIN_NAME/EMAIL/PASSWORD` | Used by `seed` / `create-admin` only |
 | `CLOUDINARY_*` | When all three are set, uploads go to Cloudinary |
 | `MAX_IMAGE_MB`, `MAX_VIDEO_MB` | Upload size limits |
+| `MEDIA_WATERMARK_TEXT` | Text burned into newly generated public image/video previews |
+| `MEDIA_BASE_URL` | Optional public backend origin for locally stored previews; Render's `RENDER_EXTERNAL_URL` is used by default |
 | `SMTP_*` | Enables emailing password-reset links |
 | `COOKIE_SECURE`, `TRUST_PROXY` | Default to `true` in production (HTTPS + reverse proxy) |
 | `PAYMENT_PROVIDER` | `none` (default) |
@@ -186,7 +189,7 @@ Customers submit service, date, time, location and message. The request is store
   ffmpeg -i input.mp4 -vf "scale=1280:-2" -an -c:v libx264 -crf 26 -preset slow -movflags +faststart hero.mp4
   ffmpeg -i input.mp4 -vf "scale=854:-2"  -an -c:v libx264 -crf 28 -preset slow -movflags +faststart hero-mobile.mp4
   ```
-- Image uploads are validated by **file signature** (not just extension), limited by size, and stored on Cloudinary (if configured) or `server/uploads`.
+- Image uploads are validated by **file signature** (not just extension), limited by size, and stored on Cloudinary (if configured) or `server/uploads`. FFmpeg and the bundled DejaVu Sans font generate watermarked previews.
 - No stock photography is bundled. Until you upload photos, tonal placeholders are shown.
 
 ---
@@ -262,10 +265,24 @@ Back up the MongoDB database regularly (Atlas has built-in backups). To update: 
 - Password-reset tokens are random, stored hashed, expire in 30 minutes, single use.
 - `helmet` security headers with a strict Content-Security-Policy (Google Fonts, Cloudinary, Google Maps embed only).
 - Input validation on every public form; a hidden honeypot field catches simple bots; public lookups need reference **and** phone.
-- Uploads: type sniffing by magic bytes, size limits, random file names; media in use cannot be deleted.
+- Uploads: type sniffing by magic bytes, size limits, random file names; originals are private and media in use cannot be deleted.
 - Settings sanitised server-side (`javascript:` / `data:` links are rejected).
 
 Recommended: keep `JWT_SECRET` private, use HTTPS only, give team members the minimum permissions, and review *Activity logs* occasionally.
+
+### Public media protection and rollout
+
+- New uploads keep their originals in private local storage or Cloudinary `authenticated` delivery. Only the server-side authenticated admin download endpoint can retrieve them, and it checks the existing media permissions.
+- Public content receives separate, maximum-1600px watermarked image previews and maximum-720p watermarked MP4 previews. Preview URLs are intentionally public; they are not originals.
+- FFmpeg renders the watermark using a bundled DejaVu Sans font, so the preview pipeline does not depend on host-installed fonts or Sharp.
+- The default watermark is `© KK DIGITAL STUDIO`. Set `MEDIA_WATERMARK_TEXT` on Render before migrating or uploading media. Watermarks are burned into generated previews, so changing the value later requires regenerating previews.
+- Back up MongoDB and media storage before rollout. After deploying the backend, run `npm --prefix server run migrate:media` once from the project directory. Wait for a zero-failure summary before considering existing uploads migrated. This replaces known Media-library references and removes their old public assets. A migration failure exits non-zero; resolve it and rerun. Existing Cloudinary `upload` URLs remain publicly accessible until their records are successfully migrated.
+- Render supplies `RENDER_EXTERNAL_URL` for local preview delivery. On other hosts, set `MEDIA_BASE_URL` to the backend's public origin. Keep Cloudinary credentials only in the backend environment.
+- Existing external/manual image URLs that are not backed by a Media-library record cannot be migrated or made private automatically; replace them with protected Media-library uploads. Keep public Cloudinary previews separate from authenticated originals. Strict transformation restrictions are an additional Cloudinary control, but enable them only after allowing the transformations the site uses.
+- There is no customer-album feature in this project. Any future private-album route must authorize each request against the album owner/customer and must never reuse the public gallery endpoint.
+- Right-click, dragging, video download controls, and save shortcuts are deterrents only. Browser-based screenshots, screen recording, developer tools, or copying already-delivered public previews cannot be reliably prevented.
+
+For Cloudflare Pages + Render, configure `MEDIA_WATERMARK_TEXT` on Render and preserve Cloudinary credentials there. Set `MEDIA_BASE_URL` only if Render does not provide `RENDER_EXTERNAL_URL`. Deploy the backend, run the migration, then publish the frontend build as usual. No Cloudinary secret belongs in a `VITE_*` variable.
 
 ---
 
@@ -330,16 +347,16 @@ Admin (`/api/admin`, authenticated, header `X-Requested-With: kk-admin` on write
 Being precise about what has been done:
 
 **Done and checked**
-- Every server file passes a Node syntax check (`node --check`).
-- The whole client (public site **and** admin panel) compiles and bundles without errors.
-- The public pages were rendered in headless Chrome at phone, tablet and desktop widths (320 → 1920 px) against a mock API, and checked for horizontal overflow, broken images and console errors.
-- All 21 admin screens were rendered and exercised against a mock admin API: sign-in/out, forgot password, create/edit/delete, product variant generator, order and booking status changes, gallery bulk actions, homepage editor save, video selection, media picker, users & permissions, SEO, contact settings, role-based menu gating, and the mobile menu.
+- The production frontend build (`npm run build` from the project directory) succeeds.
+- All modified backend JavaScript files pass `node --check`.
+- Local upload smoke tests created private originals and processed public previews for a sample image and video, including the video poster; test assets were removed.
 
-**Not run in the build environment (no network, no MongoDB, no npm install)**
-- `npm install`, `npm run dev`, `npm run build` (Vite), `npm start`.
-- The Express server against a real MongoDB: authentication, authorization, uploads (local and Cloudinary), booking and order creation, stock reservation, password-reset emails, sitemap/robots.
+**Not run**
+- The MongoDB-backed server check, authentication/authorization integration, or Cloudinary upload/download integration.
+- The one-time media migration, which must be run manually after backing up MongoDB and media storage.
+- Verification against deployed Cloudflare Pages/Render environments or in production browsers.
 - Any payment gateway (none is enabled).
-- No `package-lock.json` is included; it is created on your first `npm install`.
+- `npm --prefix server audit --omit=dev` reports a pre-existing high-severity Nodemailer advisory; `npm --prefix client audit --omit=dev` reports two moderate React Router advisories. No Sharp advisory remains after removing Sharp.
 
 Please run through this checklist on your machine before launch: `npm run seed` → sign in → change password → add contact numbers → upload a few photos → create a test booking and test order → confirm them in the admin → check the public pages on a phone.
 

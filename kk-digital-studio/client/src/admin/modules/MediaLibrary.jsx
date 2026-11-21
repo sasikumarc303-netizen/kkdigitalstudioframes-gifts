@@ -19,6 +19,7 @@ export default function MediaLibrary() {
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [edit, setEdit] = useState(null);
+  const [downloading, setDownloading] = useState(false);
   const [{ saving, error }, run] = useSaveState();
 
   const upload = async (files) => {
@@ -44,6 +45,21 @@ export default function MediaLibrary() {
   };
   const copy = async (url) => {
     try { await navigator.clipboard.writeText(new URL(url, window.location.origin).href); toast('Link copied'); } catch { toast('Could not copy the link', 'error'); }
+  };
+  const downloadOriginal = async () => {
+    if (!edit) return;
+    setDownloading(true);
+    try {
+      const blob = await api.download(`/admin/media/${edit.id}/original`);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = edit.m.originalFilename || `original-${edit.id}.${edit.m.type === 'video' ? 'mp4' : 'jpg'}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { toast(e.message, 'error'); } finally { setDownloading(false); }
   };
 
   return (
@@ -74,6 +90,9 @@ export default function MediaLibrary() {
             <p className="a-muted">{[edit.m.type, mb(edit.m.bytes), edit.m.width && edit.m.height ? `${edit.m.width}×${edit.m.height}` : '', formatDate(edit.m.createdAt), edit.m.provider].filter(Boolean).join(' · ')}</p>
             <FormGrid form={edit.form} errors={{}} set={(k, v) => setEdit((e) => ({ ...e, form: { ...e.form, [k]: v } }))} fields={[{ key: 'title', label: 'Title', max: 160 }, { key: 'alt', label: 'Description (alt text)', max: 300, hint: 'Describe the image for screen readers and search engines.' }]} />
             <Btn size="sm" variant="outline" icon="copy" onClick={() => copy(edit.m.url)}>Copy link</Btn>
+            {edit.m.originalAvailable
+              ? <Btn size="sm" variant="outline" onClick={downloadOriginal} disabled={downloading}>{downloading ? 'Preparing original…' : 'Download original'}</Btn>
+              : <small className="a-muted">Original becomes available after protected-media migration.</small>}
           </>
         )}
       </Modal>

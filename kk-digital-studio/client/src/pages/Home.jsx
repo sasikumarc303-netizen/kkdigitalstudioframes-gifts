@@ -5,6 +5,7 @@ import Img from '../components/Img.jsx';
 import { Btn } from '../components/Buttons.jsx';
 import { ServiceCard, ProductCard, PackageCard, TestimonialCard } from '../components/Cards.jsx';
 import { MasonryGallery, ContactBlock, Split } from '../components/Sections.jsx';
+import ProtectedMedia from '../components/ProtectedMedia.jsx';
 import { ErrorState, Skeleton } from '../components/States.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { api } from '../services/api.js';
@@ -150,7 +151,9 @@ function Experience({ section }) {
         <div className="experience__media">
           <ImageReveal>
             {section.video ? (
-              <video className="experience__video" src={section.video} poster={section.image || undefined} controls muted loop playsInline preload="metadata" />
+              <ProtectedMedia className="experience__video-protection">
+                <video className="experience__video" src={section.video} poster={section.image || undefined} controls controlsList="nodownload" disablePictureInPicture muted loop playsInline preload="metadata" />
+              </ProtectedMedia>
             ) : (
               <Img src={section.image} alt={section.title} ratio="4/3" width={1000} icon="camera" />
             )}

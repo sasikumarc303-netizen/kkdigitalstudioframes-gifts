@@ -24,6 +24,21 @@ function Shell() {
   const outlet = useOutlet();
   const reduce = useReducedMotion();
 
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.key.toLowerCase() !== 's') return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (
+        target.isContentEditable ||
+        target.closest('input, textarea, select, [contenteditable="true"]')
+      )) return;
+      if (!document.querySelector('[data-protected-media] img, [data-protected-media] video')) return;
+      event.preventDefault();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   if (loading && !config) return <div className="splash" role="status" aria-label="Loading"><img className="splash__logo" src="/images/kk-digital-studio-brand-logo.png" alt="KK Digital Studio" width="180" height="60" /></div>;
   if (error || !config) {
     return (

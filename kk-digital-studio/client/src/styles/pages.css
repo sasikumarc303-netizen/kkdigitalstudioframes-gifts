@@ -5,6 +5,7 @@
 .experience { display: grid; gap: clamp(2rem, 5vw, 5rem); align-items: center; }
 @media (min-width: 960px) { .experience { grid-template-columns: 1fr 1.05fr; } }
 .experience__media { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-lg); }
+.experience__video-protection { width: 100%; overflow: hidden; }
 .experience__video { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--forest); }
 .experience__text > p { margin-top: 1rem; color: rgba(245, 240, 231, 0.85); }
 .steps { display: grid; gap: 1.3rem; margin-top: 2rem; counter-reset: s; }

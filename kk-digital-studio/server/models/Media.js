@@ -10,6 +10,18 @@ const schema = new mongoose.Schema(
     provider: { type: String, enum: ['cloudinary', 'local', 'static'], default: 'local' },
     publicId: { type: String, default: '' }, // cloudinary public id or local relative path
     folder: { type: String, default: 'general', index: true },
+    posterPublicId: { type: String, default: '' },
+    originalProvider: { type: String, enum: ['cloudinary', 'local'], default: undefined },
+    originalPublicId: { type: String, default: '' },
+    originalPath: { type: String, default: '' },
+    originalMime: { type: String, default: '' },
+    originalBytes: { type: Number, default: 0 },
+    originalFilename: { type: String, default: '' },
+    legacyProvider: { type: String, enum: ['cloudinary', 'local'], default: undefined },
+    legacyPublicId: { type: String, default: '' },
+    legacyType: { type: String, enum: ['image', 'video'], default: undefined },
+    legacyUrl: { type: String, default: '' },
+    legacyPoster: { type: String, default: '' },
     purpose: { type: String, enum: ['general', 'hero', 'promo'], default: 'general' }, // for videos
     mime: String,
     bytes: Number,
@@ -21,5 +33,21 @@ const schema = new mongoose.Schema(
   { timestamps: true }
 );
 schema.index({ title: 'text', alt: 'text' });
+schema.set('toJSON', {
+  transform(_doc, ret) {
+    ret.originalAvailable = Boolean(ret.originalProvider);
+    for (const key of [
+      'originalProvider',
+      'originalPublicId',
+      'originalPath',
+      'legacyProvider',
+      'legacyPublicId',
+      'legacyType',
+      'legacyUrl',
+      'legacyPoster',
+    ]) delete ret[key];
+    return ret;
+  },
+});
 
 export default mongoose.model('Media', schema);

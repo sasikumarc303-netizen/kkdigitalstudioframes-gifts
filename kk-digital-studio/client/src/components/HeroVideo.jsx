@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { CtaButton } from './Buttons.jsx';
 import Icon from './Icon.jsx';
+import ProtectedMedia from './ProtectedMedia.jsx';
 import { useMediaQuery } from '../hooks/useMedia.js';
 
 /**
@@ -36,8 +37,8 @@ export default function HeroVideo({ hero, ctas }) {
 
   return (
     <section className="hero" aria-label="Welcome">
-      <div className={`hero__media ${ready ? 'is-ready' : ''}`}>
-        {poster && <img className="hero__poster" src={poster} alt="" />}
+      <ProtectedMedia className={`hero__media ${ready ? 'is-ready' : ''}`}>
+        {poster && <img className="hero__poster" src={poster} alt="" draggable={false} />}
         {showVideo && (
           <video
             key={src}
@@ -50,12 +51,14 @@ export default function HeroVideo({ hero, ctas }) {
             loop
             playsInline
             preload="auto"
+            controlsList="nodownload"
+            disablePictureInPicture
             aria-hidden="true"
             onPlaying={() => setReady(true)}
           />
         )}
         <div className="hero__veil" />
-      </div>
+      </ProtectedMedia>
 
       <div className="hero__content container">
         {hero.eyebrow && <motion.p className="hero__eyebrow" {...fade(0.1)}>{hero.eyebrow}</motion.p>}
