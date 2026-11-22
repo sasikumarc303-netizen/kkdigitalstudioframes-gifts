@@ -246,7 +246,7 @@ Then add a certificate with Let’s Encrypt (`certbot --nginx`). `TRUST_PROXY` a
 
 ### Cloudflare Pages frontend with a separate Render API
 - Set the Cloudflare Pages build variable `VITE_API_URL` to `https://kk-digital-studio-backend.onrender.com` (the origin only; do not append `/api`). The shared API client adds `/api` and uses this base for public requests, admin requests, and uploads. The Render origin is the fallback if the variable is omitted.
-- On Render, keep `COOKIE_SECURE=true` and `TRUST_PROXY=true`. Set `CLIENT_URL` to the Cloudflare Pages origin and retain any other already-authorized origins as comma-separated entries.
+- On Render, keep `COOKIE_SECURE=true` and `TRUST_PROXY=true`. The API allows the Cloudflare Pages origin and both `https://kkdigitalstudioframes.com` and `https://www.kkdigitalstudioframes.com`. Keep `CLIENT_URL` for any additional origins (such as localhost during development), as comma-separated entries.
 - Admin sessions use `SameSite=None; Secure` cookies for this cross-site setup. The cookie remains HTTP-only; exact-origin credentialed CORS and the existing CSRF header remain enabled. Browser privacy settings that block third-party cookies can still prevent cross-site admin sessions; using a custom frontend domain on the same site as the API is the most reliable option.
 - The existing `client/public/_redirects` SPA fallback serves `/index.html` for deep links such as `/admin` and `/photo-frames/example`.
 

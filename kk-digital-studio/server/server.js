@@ -4,7 +4,6 @@ import express from 'express';
 import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
 import { env, PROJECT_ROOT } from './config/env.js';
@@ -13,6 +12,7 @@ import publicRoutes from './routes/public.js';
 import adminRoutes from './routes/admin.js';
 import { sitemap, robots } from './controllers/seo.js';
 import { errorHandler, notFoundApi } from './middleware/errors.js';
+import { corsMiddleware } from './middleware/cors.js';
 import { PUBLIC_MEDIA_ROOT } from './services/media.js';
 import { getConfig, ensureConfigExists } from './services/siteConfig.js';
 import { DEFAULT_CONFIG } from './services/defaults.js';
@@ -24,6 +24,7 @@ const app = express();
 app.disable('x-powered-by');
 if (env.trustProxy) app.set('trust proxy', 1);
 
+app.use(corsMiddleware);
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -45,11 +46,6 @@ app.use(
   })
 );
 app.use(compression());
-const allowedClientOrigins = [...new Set([
-  ...env.clientOrigins,
-  'https://kk-digital-studio.pages.dev',
-])];
-app.use(cors({ origin: allowedClientOrigins, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
