@@ -10,13 +10,14 @@ import { useSite } from '../context/SiteContext.jsx';
 import { api } from '../services/api.js';
 import { formatDateTime } from '../services/format.js';
 
-const STAGES = ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered'];
+const STAGES = ['Placed', 'Confirmed', 'Processing', 'Production', 'Ready', 'Shipped', 'Delivered'];
 
 function Progress({ status }) {
   if (status === 'Cancelled') return <p className="status status--bad">Cancelled</p>;
-  const at = STAGES.indexOf(status);
+  const displayStatus = status === 'Pending' ? 'Placed' : status;
+  const at = STAGES.indexOf(displayStatus);
   return (
-    <ol className="progress" aria-label={`Order status: ${status}`}>
+    <ol className="progress" aria-label={`Order status: ${displayStatus}`}>
       {STAGES.map((s, i) => <li key={s} className={i <= at ? 'is-done' : ''} aria-current={i === at ? 'step' : undefined}><span />{s}</li>)}
     </ol>
   );

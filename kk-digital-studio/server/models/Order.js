@@ -18,13 +18,20 @@ const itemSchema = new mongoose.Schema(
 );
 
 const historySchema = new mongoose.Schema(
-  { status: String, note: { type: String, default: '' }, by: { type: String, default: 'customer' }, at: { type: Date, default: Date.now } },
+  {
+    status: String,
+    note: { type: String, default: '' },
+    customerNote: { type: String, trim: true, maxlength: 250, default: '' },
+    by: { type: String, default: 'customer' },
+    at: { type: Date, default: Date.now },
+  },
   { _id: false }
 );
 
 const schema = new mongoose.Schema(
   {
     orderNumber: { type: String, required: true, unique: true },
+    checkoutRequestHash: { type: String, select: false },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', index: true },
     contact: {
       name: { type: String, required: true },
@@ -48,6 +55,8 @@ const schema = new mongoose.Schema(
     paymentMethod: { type: String, default: 'enquiry' }, // enquiry | cod | online (online only when a provider is configured)
     paymentStatus: { type: String, enum: PAYMENT_STATUSES, default: 'Unpaid' },
     status: { type: String, enum: ORDER_STATUSES, default: 'Pending', index: true },
+    whatsappOptIn: { type: Boolean, default: false },
+    whatsappOptInAt: { type: Date, default: null },
     notes: { type: String, trim: true, maxlength: 1000, default: '' },
     adminNotes: { type: String, trim: true, maxlength: 2000, default: '' },
     stockRestored: { type: Boolean, default: false },
@@ -56,5 +65,6 @@ const schema = new mongoose.Schema(
   { timestamps: true }
 );
 schema.index({ 'contact.name': 'text', 'contact.phone': 'text', orderNumber: 'text' });
+schema.index({ checkoutRequestHash: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model('Order', schema);

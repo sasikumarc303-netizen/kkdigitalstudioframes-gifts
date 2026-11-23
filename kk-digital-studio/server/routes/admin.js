@@ -67,7 +67,9 @@ r.delete('/bookings/:id', requirePermission('bookings'), bookings.remove);
 // orders
 r.get('/orders', requirePermission('orders'), orders.list);
 r.get('/orders/:id', requirePermission('orders'), orders.get);
+r.get('/orders/:id/notifications', requirePermission('orders'), orders.notifications);
 r.patch('/orders/:id/status', requirePermission('orders'), orders.setStatus);
+r.post('/orders/:id/notifications/:notificationId/retry', requirePermission('orders'), orders.retryNotification);
 r.put('/orders/:id', requirePermission('orders'), orders.update);
 r.delete('/orders/:id', requirePermission('orders'), orders.remove);
 

@@ -34,7 +34,8 @@ export default function Footer() {
           <ul className="footer__links">
             {nav.map((n) => <li key={n.path + n.label}>{/^https?:/i.test(n.path) ? <a href={n.path} target="_blank" rel="noopener noreferrer">{n.label}</a> : <Link to={n.path}>{n.label}</Link>}</li>)}
             <li><Link to="/booking">Book a session</Link></li>
-            <li><Link to="/orders">Track an order</Link></li>
+            <li><Link to="/track-order">Track an order</Link></li>
+            <li><Link to="/orders">Order history</Link></li>
           </ul>
         </div>
 

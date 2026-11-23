@@ -61,6 +61,13 @@ export const env = {
     pass: process.env.SMTP_PASS || '',
     from: process.env.SMTP_FROM || '',
   },
+  whatsapp: {
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN || '',
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
+    templateName: process.env.WHATSAPP_TEMPLATE_NAME || '',
+    apiVersion: process.env.WHATSAPP_API_VERSION || '',
+    templateLanguage: process.env.WHATSAPP_TEMPLATE_LANGUAGE || 'en',
+  },
   // Used only by scripts/seed.js and scripts/createAdmin.js
   seedAdmin: {
     name: process.env.ADMIN_NAME || 'Studio Owner',
@@ -78,3 +85,10 @@ export const env = {
 
 env.cloudinaryEnabled = Boolean(env.cloudinary.cloudName && env.cloudinary.apiKey && env.cloudinary.apiSecret);
 env.smtpEnabled = Boolean(env.smtp.host && env.smtp.from);
+env.whatsappEnabled = Boolean(
+  env.whatsapp.accessToken &&
+  /^\d+$/.test(env.whatsapp.phoneNumberId) &&
+  /^[a-z0-9_]+$/i.test(env.whatsapp.templateName) &&
+  /^v\d+\.\d+$/.test(env.whatsapp.apiVersion) &&
+  /^[a-z]{2,3}(?:_[A-Z]{2})?$/.test(env.whatsapp.templateLanguage)
+);

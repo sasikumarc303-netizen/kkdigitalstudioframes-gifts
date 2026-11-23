@@ -5,10 +5,16 @@ import { validate } from '../middleware/validate.js';
 import { ORDER_STATUSES, PAYMENT_STATUSES } from '../config/constants.js';
 import { logActivity } from '../services/activity.js';
 import { restoreStock } from '../services/orders.js';
+import { canTransitionOrderStatus } from '../services/orderTracking.js';
+import { enqueueOrderNotification, retryOrderNotification } from '../services/orderNotifications.js';
+import { withMongoTransaction } from '../services/mongoTransactions.js';
+import OrderNotification from '../models/OrderNotification.js';
 
-const byId = async (id) => {
+const byId = async (id, { session } = {}) => {
   if (!mongoose.isValidObjectId(id)) throw new ApiError(400, 'Invalid id');
-  const o = await Order.findById(id).populate('customer', 'name phone email');
+  let query = Order.findById(id).populate('customer', 'name phone email');
+  if (session) query = query.session(session);
+  const o = await query;
   if (!o) throw new ApiError(404, 'Order not found');
   return o;
 };
@@ -41,17 +47,68 @@ export const list = asyncHandler(async (req, res) => {
 export const get = asyncHandler(async (req, res) => res.json(await byId(req.params.id)));
 
 export const setStatus = asyncHandler(async (req, res) => {
-  const { status, note } = validate({ status: { type: 'enum', values: ORDER_STATUSES, required: true }, note: { type: 'text', max: 500 } }, req.body);
-  const o = await byId(req.params.id);
-  const from = o.status;
-  if (from === status) return res.json(o);
-  if (from === 'Cancelled') throw new ApiError(409, 'A cancelled order cannot be reopened. Ask the customer to place a new order.');
-  o.status = status;
-  if (status === 'Cancelled') await restoreStock(o);
-  o.history.push({ status, note: note || `${from} → ${status}`, by: req.user.name, at: new Date() });
-  await o.save();
+  const { status, note, customerNote } = validate({
+    status: { type: 'enum', values: ORDER_STATUSES, required: true },
+    note: { type: 'text', max: 500 },
+    customerNote: { type: 'text', max: 250 },
+  }, req.body);
+  let o;
+  let from;
+  let changed = false;
+  try {
+    await withMongoTransaction(async (session) => {
+      changed = false;
+      o = await byId(req.params.id, { session });
+      from = o.status;
+      if (from === status) return;
+      if (!canTransitionOrderStatus(from, status, o.fulfilment)) {
+        throw new ApiError(409, `Order cannot move from ${from} to ${status}.`);
+      }
+      o.status = status;
+      if (status === 'Cancelled') await restoreStock(o, { session });
+      o.history.push({
+        status,
+        note: note || `${from} → ${status}`,
+        customerNote: customerNote || '',
+        by: req.user.name,
+        at: new Date(),
+      });
+      await o.save({ session });
+      await enqueueOrderNotification(o, status, { session });
+      changed = true;
+    });
+  } catch (error) {
+    if (error?.name !== 'VersionError') throw error;
+    const current = await byId(req.params.id);
+    if (current.status !== status) {
+      throw new ApiError(409, 'The order changed while you were updating it. Refresh and try again.');
+    }
+    o = current;
+    changed = false;
+  }
+  if (!changed) return res.json(o);
   logActivity(req, { action: 'status', entity: 'order', entityId: o._id, summary: `Order ${o.orderNumber}: ${from} → ${status}` });
   res.json(o);
+});
+
+export const notifications = asyncHandler(async (req, res) => {
+  const o = await byId(req.params.id);
+  const items = await OrderNotification.find({ order: o._id })
+    .sort({ createdAt: 1 })
+    .select('status state attempts nextAttemptAt lastAttemptAt acceptedAt lastError providerMessageId createdAt')
+    .lean();
+  res.json(items.map(({ _id, ...item }) => ({ id: String(_id), ...item })));
+});
+
+export const retryNotification = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.notificationId)) throw new ApiError(400, 'Invalid notification id');
+  const notification = await retryOrderNotification(req.params.id, req.params.notificationId);
+  res.status(202).json({
+    id: notification._id,
+    status: notification.status,
+    state: notification.state,
+    attempts: notification.attempts,
+  });
 });
 
 export const update = asyncHandler(async (req, res) => {

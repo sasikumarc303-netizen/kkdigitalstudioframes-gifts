@@ -96,10 +96,25 @@
 /* ---------- Orders ---------- */
 .lookup { margin-bottom: 2rem; } .order-list { display: grid; gap: 1.2rem; margin-top: 1.5rem; }
 .order header { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; } .order__meta { display: grid; text-align: right; font-size: 0.9rem; color: var(--muted); } .order__meta strong { color: var(--forest); font-size: 1.2rem; font-family: var(--font-head); }
-.progress { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.2rem; margin: 0.4rem 0 1.4rem; font-size: 0.68rem; text-align: center; color: var(--muted); letter-spacing: 0.04em; }
+.progress { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.2rem; margin: 0.4rem 0 1.4rem; font-size: 0.68rem; text-align: center; color: var(--muted); letter-spacing: 0.04em; }
 .progress li { display: grid; gap: 0.4rem; justify-items: center; } .progress li span { width: 100%; height: 4px; background: var(--line); border-radius: 2px; } .progress li.is-done { color: var(--forest); font-weight: 600; } .progress li.is-done span { background: var(--sage); }
-@media (max-width: 479px) { .progress { font-size: 0.58rem; } }
+@media (max-width: 479px) { .progress { font-size: 0.55rem; } }
 .order__items { display: grid; gap: 0.7rem; margin-bottom: 1rem; } .order__items li { display: grid; grid-template-columns: 48px 1fr auto; gap: 0.8rem; align-items: center; } .order__items small { display: block; color: var(--muted); }
+.track-order__form h2 { margin-bottom: 1rem; }
+.track-order__result { display: grid; gap: 1rem; }
+.track-order__header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; flex-wrap: wrap; }
+.track-order__header h2 { margin: 0; overflow-wrap: anywhere; }
+.track-order__status { display: grid; gap: 0.2rem; text-align: right; color: var(--muted); }
+.track-order__status strong { color: var(--forest); font-size: 1.15rem; }
+.track-order__status.is-cancelled strong { color: var(--error, #9b3028); }
+.track-history { list-style: none; display: grid; gap: 0; margin: 0 0 0.5rem; padding: 0; }
+.track-history li { display: grid; grid-template-columns: 1rem 1fr; gap: 0.8rem; min-height: 4.5rem; }
+.track-history__marker { position: relative; width: 0.75rem; height: 0.75rem; margin-top: 0.2rem; border: 2px solid var(--sage); border-radius: 50%; background: var(--white); }
+.track-history li:not(:last-child) .track-history__marker::after { position: absolute; top: 0.6rem; left: 0.2rem; width: 2px; height: 4.4rem; background: var(--line); content: ''; }
+.track-history li.is-current .track-history__marker { background: var(--sage); }
+.track-history li > div { display: grid; gap: 0.2rem; padding-bottom: 1rem; }
+.track-history time, .track-history small { color: var(--muted); font-size: 0.85rem; }
+.track-history p { margin: 0.2rem 0; }
 
 /* ---------- Booking / contact ---------- */
 .booking { display: grid; gap: 2rem; } @media (min-width: 960px) { .booking { grid-template-columns: 1.5fr 1fr; align-items: start; } .booking__side { position: sticky; top: calc(var(--header-h) + 1.5rem); } }

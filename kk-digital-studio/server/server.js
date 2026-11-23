@@ -15,6 +15,7 @@ import { errorHandler, notFoundApi } from './middleware/errors.js';
 import { corsMiddleware } from './middleware/cors.js';
 import { PUBLIC_MEDIA_ROOT } from './services/media.js';
 import { getConfig, ensureConfigExists } from './services/siteConfig.js';
+import { startOrderNotificationWorker } from './services/orderNotifications.js';
 import { DEFAULT_CONFIG } from './services/defaults.js';
 import Product from './models/Product.js';
 import AdminUser from './models/AdminUser.js';
@@ -150,6 +151,7 @@ async function start() {
     process.exit(1);
   }
   await ensureConfigExists();
+  startOrderNotificationWorker();
   if ((await AdminUser.countDocuments()) === 0) {
     console.warn('[setup] No admin account exists yet. Run `npm run seed` (or `npm run create-admin`) after setting ADMIN_EMAIL and ADMIN_PASSWORD in .env.');
   }

@@ -2,12 +2,14 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import * as c from '../controllers/public.js';
 import { honeypot } from '../middleware/validate.js';
+import { orderLookupLimit } from '../middleware/orderLookupLimit.js';
 
 const limiter = (windowMin, max, message) =>
   rateLimit({ windowMs: windowMin * 60 * 1000, max, standardHeaders: true, legacyHeaders: false, message: { message } });
 
 const formLimit = limiter(60, 20, 'Too many submissions. Please try again in a little while.');
 const lookupLimit = limiter(15, 60, 'Too many lookups. Please try again shortly.');
+const trackingLimit = limiter(15, 10, 'Too many tracking attempts. Please try again later.');
 
 const r = Router();
 
@@ -23,7 +25,8 @@ r.get('/products/:idOrSlug', c.getProduct);
 
 r.post('/cart/price', lookupLimit, c.cartPrice);
 r.post('/orders', formLimit, honeypot, c.createOrder);
-r.post('/orders/lookup', lookupLimit, c.lookupOrders);
+r.post('/orders/lookup', orderLookupLimit, c.lookupOrders);
+r.post('/orders/track', trackingLimit, c.trackOrder);
 
 r.post('/bookings', formLimit, honeypot, c.createBooking);
 r.post('/bookings/lookup', lookupLimit, c.lookupBooking);

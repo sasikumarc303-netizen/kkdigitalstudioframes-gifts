@@ -79,7 +79,18 @@ export default function Seo({ title, description, image, noindex = false }) {
     if (noindex) setMeta('meta[name="robots"]', { name: 'robots', content: 'noindex,nofollow' });
     else if (robots) robots.remove();
     const fav = config?.general?.favicon;
-    if (fav) setMeta('link[rel="icon"]', { tag: 'link', rel: 'icon', href: fav }).removeAttribute('type');
+    if (fav) {
+      const faviconLinks = document.head.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]');
+      if (faviconLinks.length) {
+        faviconLinks.forEach((link) => {
+          link.setAttribute('href', fav);
+          link.removeAttribute('type');
+          link.removeAttribute('sizes');
+        });
+      } else {
+        setMeta('link[rel="icon"]', { tag: 'link', rel: 'icon', href: fav }).removeAttribute('type');
+      }
+    }
   }, [config, pathname, title, description, image, noindex]);
 
   return null;

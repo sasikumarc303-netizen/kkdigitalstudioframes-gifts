@@ -109,6 +109,7 @@ Copy `.env.example` to `.env` (project root or `server/`). Every variable is doc
 | `MEDIA_WATERMARK_TEXT` | Text burned into newly generated public image/video previews |
 | `MEDIA_BASE_URL` | Optional public backend origin for locally stored previews; Render's `RENDER_EXTERNAL_URL` is used by default |
 | `SMTP_*` | Enables emailing password-reset links |
+| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TEMPLATE_NAME`, `WHATSAPP_API_VERSION` | Optional server-only WhatsApp Business Cloud API settings. Automatic order notifications remain disabled unless all four are valid; also configure `WHATSAPP_TEMPLATE_LANGUAGE` (defaults to `en`). |
 | `COOKIE_SECURE`, `TRUST_PROXY` | Default to `true` in production (HTTPS + reverse proxy) |
 | `PAYMENT_PROVIDER` | `none` (default) |
 | `VITE_API_URL` | Frontend API origin (for example, `https://kk-digital-studio-backend.onrender.com`); set in Cloudflare Pages build variables, without `/api` |
@@ -249,6 +250,17 @@ Then add a certificate with Let’s Encrypt (`certbot --nginx`). `TRUST_PROXY` a
 - On Render, keep `COOKIE_SECURE=true` and `TRUST_PROXY=true`. The API allows the Cloudflare Pages origin and both `https://kkdigitalstudioframes.com` and `https://www.kkdigitalstudioframes.com`. Keep `CLIENT_URL` for any additional origins (such as localhost during development), as comma-separated entries.
 - Admin sessions use `SameSite=None; Secure` cookies for this cross-site setup. The cookie remains HTTP-only; exact-origin credentialed CORS and the existing CSRF header remain enabled. Browser privacy settings that block third-party cookies can still prevent cross-site admin sessions; using a custom frontend domain on the same site as the API is the most reliable option.
 - The existing `client/public/_redirects` SPA fallback serves `/index.html` for deep links such as `/admin` and `/photo-frames/example`.
+- Customer tracking is available at `/track-order`. Public lookup requires the order number and checkout phone, is rate-limited, and returns only customer-safe status/history fields. Existing `/orders/lookup` response format is preserved; its per-instance/IP limit charges each submitted order candidate (up to 40 candidates per 15 minutes). New references use a longer random suffix; existing references remain unchanged.
+- Checkout reuses a browser-session idempotency key across retries and stores only its SHA-256 hash with the order. Replayed submissions return the existing order instead of reserving stock or enqueueing another notification.
+- Order creation, order status changes, cancellation stock restoration, and their WhatsApp outbox events commit in MongoDB transactions. This prevents a saved order/status without its matching notification event, and prevents duplicate stock returns. MongoDB must support transactions (MongoDB Atlas does; a local standalone server must be configured as a replica set). If a transaction fails, the operation is rejected; it is not retried outside the transaction.
+- WhatsApp automation is opt-in per checkout and stays disabled until all WhatsApp settings are configured on Render. Use an approved utility template with three body parameters in order: order number, status, tracking URL. Never place tokens in Cloudflare Pages or `VITE_*` variables. Known 429 rate limits use `Retry-After` or bounded exponential backoff, with at most five attempts. Timeouts, network errors, and 5xx responses remain `unknown` and are not automatically resent to avoid duplicates; verify these before any manual action. Logs include event IDs/state, not customer phone numbers or credentials. A provider acceptance is not a delivery receipt.
+- Changes are additive: existing order documents are not migrated or rewritten. To roll back, redeploy the previous Render and Cloudflare Pages versions; leave the added notification collection and order fields untouched. Unset the WhatsApp variables on Render to immediately disable automatic sends.
+
+### Safe feature rollout and rollback
+- Review the changed files and tests in a GitHub pull request; merge only after approval. Do not run seeds or migrations for order tracking.
+- If provider automation is desired, first create/approve the WhatsApp Business utility template and configure its four required values plus optional language in Render's backend environment. Otherwise leave them unset; manual WhatsApp remains available only for customers who opted in.
+- After merging, verify the Render deployment and Cloudflare Pages deployment using their dashboards. Confirm API health, custom-domain CORS/preflight, public tracking, authenticated admin updates, and normal checkout before enabling automatic notifications.
+- Roll back by redeploying the previous known-good version on Render and Cloudflare Pages. The feature adds fields and a collection but does not delete or transform existing customer/order/media data; do not drop the collection during rollback.
 
 ### Backups & updates
 Back up the MongoDB database regularly (Atlas has built-in backups). To update: pull the new code, `npm run install:all`, `npm run build`, restart.
@@ -320,9 +332,9 @@ kk-digital-studio/
 
 ## API overview
 
-Public (`/api`): `GET /site`, `/home`, `/services`, `/packages`, `/testimonials`, `/categories`, `/gallery`, `/products`, `/products/:idOrSlug` · `POST /cart/price`, `/orders`, `/orders/lookup`, `/bookings`, `/bookings/lookup`, `/bookings/cancel`, `/bookings/reschedule`, `/enquiries`.
+Public (`/api`): `GET /site`, `/home`, `/services`, `/packages`, `/testimonials`, `/categories`, `/gallery`, `/products`, `/products/:idOrSlug` · `POST /cart/price`, `/orders`, `/orders/lookup`, `/orders/track`, `/bookings`, `/bookings/lookup`, `/bookings/cancel`, `/bookings/reschedule`, `/enquiries`.
 
-Admin (`/api/admin`, authenticated, header `X-Requested-With: kk-admin` on writes): `auth/*`, `config`, `config/:group`, `dashboard`, and CRUD for `services`, `packages`, `categories`, `testimonials`, `products`, `gallery` (+ `gallery/upload`, `bulk`), `bookings`, `orders`, `enquiries`, `customers`, `media`, `users`, `logs`.
+Admin (`/api/admin`, authenticated, header `X-Requested-With: kk-admin` on writes): `auth/*`, `config`, `config/:group`, `dashboard`, and CRUD for `services`, `packages`, `categories`, `testimonials`, `products`, `gallery` (+ `gallery/upload`, `bulk`), `bookings`, `orders` (+ status and notification retry), `enquiries`, `customers`, `media`, `users`, `logs`.
 
 ---
 
