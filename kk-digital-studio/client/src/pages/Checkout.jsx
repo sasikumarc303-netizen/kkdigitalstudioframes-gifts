@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHero } from '../components/Sections.jsx';
 import Seo from '../components/Seo.jsx';
@@ -12,15 +12,44 @@ import { useSite } from '../context/SiteContext.jsx';
 import { api } from '../services/api.js';
 import { usePricedCart } from './Cart.jsx';
 
+const CHECKOUT_REQUEST_KEY = 'kk-checkout-request-key';
+
+function getCheckoutRequestKey(keyRef) {
+  if (keyRef.current) return keyRef.current;
+  let key;
+  try {
+    key = window.sessionStorage.getItem(CHECKOUT_REQUEST_KEY);
+  } catch (error) {
+    console.warn('[checkout] unable to read request key storage', error?.name || 'UnknownError');
+  }
+  keyRef.current = key || window.crypto.randomUUID();
+  try {
+    window.sessionStorage.setItem(CHECKOUT_REQUEST_KEY, keyRef.current);
+  } catch (error) {
+    console.warn('[checkout] unable to persist request key', error?.name || 'UnknownError');
+  }
+  return keyRef.current;
+}
+
+function rotateCheckoutRequestKey(keyRef) {
+  keyRef.current = window.crypto.randomUUID();
+  try {
+    window.sessionStorage.setItem(CHECKOUT_REQUEST_KEY, keyRef.current);
+  } catch (error) {
+    console.warn('[checkout] unable to rotate request key', error?.name || 'UnknownError');
+  }
+}
+
 export default function Checkout() {
   const cart = useCart();
   const { config, money, waLink, payment } = useSite();
   const commerce = config.commerce;
-  const [form, setForm] = useState({ name: '', phone: '', email: '', line1: '', line2: '', city: '', state: 'Tamil Nadu', pincode: '', notes: '', fulfilment: 'delivery', paymentMethod: 'enquiry', website: '' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', line1: '', line2: '', city: '', state: 'Tamil Nadu', pincode: '', notes: '', fulfilment: 'delivery', paymentMethod: 'enquiry', whatsappOptIn: false, website: '' });
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [placed, setPlaced] = useState(null);
+  const checkoutRequestKeyRef = useRef(null);
   const { priced, loading, error } = usePricedCart(placed ? [] : cart.items, form.fulfilment);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -30,17 +59,21 @@ export default function Checkout() {
     e.preventDefault();
     setBusy(true); setErrors({}); setMessage('');
     try {
+      const checkoutRequestKey = getCheckoutRequestKey(checkoutRequestKeyRef);
       const res = await api.post('/orders', {
+        checkoutRequestKey,
         contact: { name: form.name, phone: form.phone, email: form.email },
         address: { line1: form.line1, line2: form.line2, city: form.city, state: form.state, pincode: form.pincode },
         fulfilment: form.fulfilment,
         paymentMethod: form.paymentMethod,
+        whatsappOptIn: form.whatsappOptIn,
         notes: form.notes,
         website: form.website,
         items: cart.items.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity })),
       });
       cart.rememberOrder(res.orderNumber, form.phone);
       cart.clear();
+      rotateCheckoutRequestKey(checkoutRequestKeyRef);
       setPlaced(res);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -70,7 +103,8 @@ export default function Checkout() {
                 <li className="confirm__total"><span>Total</span><strong>{money(placed.total)}</strong></li>
               </ul>
               <div className="confirm__actions">
-                <Btn to="/orders">Track this order</Btn>
+                <Btn to="/track-order" state={{ orderNumber: placed.orderNumber, phone: form.phone }}>Track this order</Btn>
+                <Btn to="/orders" variant="ghost">Order history</Btn>
                 {wa && <Btn href={wa} variant="outline" icon="whatsapp">Message us on WhatsApp</Btn>}
                 <Btn to="/photo-frames" variant="ghost">Continue shopping</Btn>
               </div>
@@ -111,6 +145,18 @@ export default function Checkout() {
                   <Field label="Phone number" error={errors.phone} required><input type="tel" inputMode="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" /></Field>
                   <Field label="Email (optional)" error={errors.email}><input type="email" value={form.email} onChange={set('email')} autoComplete="email" /></Field>
                 </div>
+              </fieldset>
+
+              <fieldset className="panel">
+                <legend>Order updates</legend>
+                <label className="choice choice--block">
+                  <input
+                    type="checkbox"
+                    checked={form.whatsappOptIn}
+                    onChange={(e) => setForm((f) => ({ ...f, whatsappOptIn: e.target.checked }))}
+                  />
+                  <span><strong>Receive WhatsApp updates for this order</strong><small>Optional. We’ll only send order status updates, not marketing messages.</small></span>
+                </label>
               </fieldset>
 
               <fieldset className="panel">

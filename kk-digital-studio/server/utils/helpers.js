@@ -40,10 +40,10 @@ export function todayIST() {
   return new Date(Date.now() + IST_OFFSET_MIN * 60000).toISOString().slice(0, 10);
 }
 
-/** Human-friendly reference like KK-BK-241109-7F3A */
+/** Human-friendly reference like KK-BK-241109-7F3A12BC */
 export function makeReference(prefix) {
   const d = new Date(Date.now() + IST_OFFSET_MIN * 60000).toISOString().slice(2, 10).replace(/-/g, '');
-  const rand = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 4);
+  const rand = crypto.randomBytes(4).toString('hex').toUpperCase();
   return `KK-${prefix}-${d}-${rand}`;
 }
 

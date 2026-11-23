@@ -1,5 +1,6 @@
 import Product from '../models/Product.js';
 import { getConfig } from './siteConfig.js';
+import { ApiError } from '../utils/helpers.js';
 
 /**
  * Prices a cart from the database (never trusts prices sent by the browser).
@@ -68,16 +69,21 @@ export async function shippingFor(subtotal, fulfilment) {
 }
 
 /** Atomically takes stock for every line. On any failure everything already taken is put back. */
-export async function reserveStock(lines) {
+export async function reserveStock(lines, { session, productModel = Product } = {}) {
   const taken = [];
   for (const l of lines) {
     // eslint-disable-next-line no-await-in-loop
-    const res = await Product.updateOne(
+    const options = session ? { session } : {};
+    const res = await productModel.updateOne(
       { _id: l.product, variants: { $elemMatch: { _id: l.variantId, stock: { $gte: l.quantity }, active: true } } },
-      { $inc: { 'variants.$.stock': -l.quantity } }
+      { $inc: { 'variants.$.stock': -l.quantity } },
+      options
     );
     if (res.modifiedCount !== 1) {
-      await Promise.all(taken.map((t) => Product.updateOne({ _id: t.product, 'variants._id': t.variantId }, { $inc: { 'variants.$.stock': t.quantity } })));
+      if (session) {
+        throw new ApiError(409, 'Sorry, an item just went out of stock. Please review your cart.');
+      }
+      await Promise.all(taken.map((t) => productModel.updateOne({ _id: t.product, 'variants._id': t.variantId }, { $inc: { 'variants.$.stock': t.quantity } })));
       return false;
     }
     taken.push(l);
@@ -85,11 +91,20 @@ export async function reserveStock(lines) {
   return true;
 }
 
-/** Put stock back for a cancelled order (once). */
-export async function restoreStock(order) {
+/** Put stock back for a cancelled order inside its cancellation transaction. */
+export async function restoreStock(order, { session, productModel = Product } = {}) {
+  if (!session) throw new Error('Stock restoration requires a MongoDB transaction session.');
   if (order.stockRestored) return;
-  await Promise.all(
-    order.items.map((i) => Product.updateOne({ _id: i.product, 'variants._id': i.variantId }, { $inc: { 'variants.$.stock': i.quantity } }))
-  );
+  for (const item of order.items) {
+    // eslint-disable-next-line no-await-in-loop
+    const result = await productModel.updateOne(
+      { _id: item.product, 'variants._id': item.variantId },
+      { $inc: { 'variants.$.stock': item.quantity } },
+      { session }
+    );
+    if (result.modifiedCount !== 1) {
+      throw new ApiError(409, 'Could not restore stock for a cancelled order item. Check that its product variant still exists.');
+    }
+  }
   order.stockRestored = true;
 }

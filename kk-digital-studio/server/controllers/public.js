@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import Service from '../models/Service.js';
 import Package from '../models/Package.js';
@@ -16,9 +17,25 @@ import { upsertCustomer } from '../services/customers.js';
 import { logPublicEvent } from '../services/activity.js';
 import { notifyStudio } from '../services/mailer.js';
 import { priceCart, shippingFor, reserveStock } from '../services/orders.js';
+import { lookupOrderTracking } from '../services/orderTracking.js';
+import { enqueueOrderNotification } from '../services/orderNotifications.js';
+import { withMongoTransaction } from '../services/mongoTransactions.js';
 
 const sorted = { order: 1, createdAt: -1 };
 const isId = (v) => mongoose.isValidObjectId(v);
+const checkoutRequestKeyPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const hashCheckoutRequestKey = (key) => createHash('sha256').update(key).digest('hex');
+
+const checkoutOrderResponse = (order) => ({
+  orderNumber: order.orderNumber,
+  status: order.status,
+  total: order.total,
+  subtotal: order.subtotal,
+  shipping: order.shipping,
+  paymentMethod: order.paymentMethod,
+  items: order.items,
+  createdAt: order.createdAt,
+});
 
 // ---------- content ----------
 export const site = asyncHandler(async (_req, res) => {
@@ -121,6 +138,14 @@ export const cartPrice = asyncHandler(async (req, res) => {
 
 export const createOrder = asyncHandler(async (req, res) => {
   const body = req.body || {};
+  const checkoutRequestKey = body.checkoutRequestKey === undefined ? randomUUID() : body.checkoutRequestKey;
+  if (typeof checkoutRequestKey !== 'string' || !checkoutRequestKeyPattern.test(checkoutRequestKey)) {
+    throw new ApiError(422, 'Invalid checkout request key');
+  }
+  const checkoutRequestHash = hashCheckoutRequestKey(checkoutRequestKey);
+  const previousOrder = await Order.findOne({ checkoutRequestHash });
+  if (previousOrder) return res.status(201).json(checkoutOrderResponse(previousOrder));
+
   const config = await getConfig();
   const contact = validate({ name: { type: 'string', required: true, min: 2, max: 80 }, phone: { type: 'phone', required: true }, email: { type: 'email' } }, body.contact || {});
   const fulfilment = body.fulfilment === 'pickup' ? 'pickup' : 'delivery';
@@ -134,13 +159,12 @@ export const createOrder = asyncHandler(async (req, res) => {
   );
   const paymentMethod = body.paymentMethod === 'cod' && config.commerce.allowCod ? 'cod' : 'enquiry';
   const notes = validate({ notes: { type: 'text', max: 1000 } }, { notes: body.notes }).notes || '';
+  const whatsappOptIn = validate({ whatsappOptIn: { type: 'boolean', default: false } }, body).whatsappOptIn;
   const items = cartItemsSchema(body.items);
 
   const priced = await priceCart(items);
   if (priced.issues.length) throw new ApiError(409, priced.issues[0].message, { issues: priced.issues });
   const shipping = await shippingFor(priced.subtotal, fulfilment);
-
-  if (!(await reserveStock(priced.lines))) throw new ApiError(409, 'Sorry, an item just went out of stock. Please review your cart.');
 
   const customer = await upsertCustomer({
     name: contact.name,
@@ -151,46 +175,58 @@ export const createOrder = asyncHandler(async (req, res) => {
   });
 
   let order;
+  let created = false;
   for (let attempt = 0; attempt < 5 && !order; attempt += 1) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      order = await Order.create({
-        orderNumber: makeReference('ORD'),
-        customer: customer._id,
-        contact: { ...contact, phoneKey: phoneKey(contact.phone) },
-        shippingAddress: address,
-        fulfilment,
-        items: priced.lines.map(({ product, variantId, name, size, finish, sku, image, unitPrice, quantity, lineTotal }) => ({ product, variantId, name, size, finish, sku, image, unitPrice, quantity, lineTotal })),
-        subtotal: priced.subtotal,
-        shipping,
-        total: priced.subtotal + shipping,
-        currency: config.general.currency,
-        paymentMethod,
-        notes,
-        history: [{ status: 'Pending', note: 'Order placed on website', by: 'customer' }],
+      await withMongoTransaction(async (session) => {
+        order = undefined;
+        created = false;
+        const existingOrder = await Order.findOne({ checkoutRequestHash }).session(session);
+        if (existingOrder) {
+          order = existingOrder;
+          return;
+        }
+        await reserveStock(priced.lines, { session });
+        const [createdOrder] = await Order.create([{
+          orderNumber: makeReference('ORD'),
+          checkoutRequestHash,
+          customer: customer._id,
+          contact: { ...contact, phoneKey: phoneKey(contact.phone) },
+          shippingAddress: address,
+          fulfilment,
+          items: priced.lines.map(({ product, variantId, name, size, finish, sku, image, unitPrice, quantity, lineTotal }) => ({ product, variantId, name, size, finish, sku, image, unitPrice, quantity, lineTotal })),
+          subtotal: priced.subtotal,
+          shipping,
+          total: priced.subtotal + shipping,
+          currency: config.general.currency,
+          paymentMethod,
+          whatsappOptIn,
+          whatsappOptInAt: whatsappOptIn ? new Date() : null,
+          notes,
+          history: [{ status: 'Pending', note: 'Order placed on website', by: 'customer' }],
+        }], { session });
+        order = createdOrder;
+        await enqueueOrderNotification(order, order.status, { session });
+        created = true;
       });
     } catch (e) {
-      if (e?.code !== 11000) {
-        await Promise.all(priced.lines.map((l) => Product.updateOne({ _id: l.product, 'variants._id': l.variantId }, { $inc: { 'variants.$.stock': l.quantity } })));
-        throw e;
+      if (e?.code !== 11000) throw e;
+      const duplicateRequest = await Order.findOne({ checkoutRequestHash });
+      if (duplicateRequest) {
+        order = duplicateRequest;
+        break;
       }
+      order = undefined;
     }
   }
   if (!order) throw new ApiError(500, 'Could not create the order. Please try again.');
 
-  logPublicEvent(req, { action: 'create', entity: 'order', entityId: order._id, summary: `New order ${order.orderNumber} from ${contact.name} (₹${order.total})` });
-  notifyStudio(config, `New order ${order.orderNumber}`, `${contact.name} (${contact.phone}) placed order ${order.orderNumber} for ${order.currency} ${order.total}.`);
-
-  res.status(201).json({
-    orderNumber: order.orderNumber,
-    status: order.status,
-    total: order.total,
-    subtotal: order.subtotal,
-    shipping: order.shipping,
-    paymentMethod,
-    items: order.items,
-    createdAt: order.createdAt,
-  });
+  if (created) {
+    logPublicEvent(req, { action: 'create', entity: 'order', entityId: order._id, summary: `New order ${order.orderNumber} from ${contact.name} (₹${order.total})` });
+    notifyStudio(config, `New order ${order.orderNumber}`, `${contact.name} (${contact.phone}) placed order ${order.orderNumber} for ${order.currency} ${order.total}.`);
+  }
+  res.status(201).json(checkoutOrderResponse(order));
 });
 
 const publicOrder = (o) => ({
@@ -209,17 +245,30 @@ const publicOrder = (o) => ({
 
 /** Order history for a shopper: items are [{ orderNumber, phone }] – the phone number acts as the shared secret. */
 export const lookupOrders = asyncHandler(async (req, res) => {
-  const items = (Array.isArray(req.body.items) ? req.body.items : []).slice(0, 20);
+  const items = (Array.isArray(req.body?.items) ? req.body.items : []).slice(0, 20);
   const out = [];
   for (const it of items) {
-    const orderNumber = String(it.orderNumber || '').trim().toUpperCase();
-    const key = phoneKey(it.phone);
-    if (!orderNumber || key.length < 7) continue;
+    const input = validate(
+      {
+        orderNumber: { type: 'string', required: true, min: 1, max: 40 },
+        phone: { type: 'phone', required: true },
+      },
+      it && typeof it === 'object' && !Array.isArray(it) ? it : {}
+    );
+    const orderNumber = input.orderNumber.toUpperCase();
+    const key = phoneKey(input.phone);
     // eslint-disable-next-line no-await-in-loop
     const o = await Order.findOne({ orderNumber, 'contact.phoneKey': key });
     if (o) out.push(publicOrder(o));
   }
   res.json(out);
+});
+
+export const trackOrder = asyncHandler(async (req, res) => {
+  res.json(await lookupOrderTracking(
+    req.body,
+    (query) => Order.findOne(query).select('orderNumber status fulfilment createdAt updatedAt history.status history.at history.by history.customerNote')
+  ));
 });
 
 // ---------- bookings ----------

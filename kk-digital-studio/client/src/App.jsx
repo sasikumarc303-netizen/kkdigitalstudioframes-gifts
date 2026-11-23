@@ -14,6 +14,7 @@ const ProductDetail = lazy(() => import('./pages/ProductDetail.jsx'));
 const Cart = lazy(() => import('./pages/Cart.jsx'));
 const Checkout = lazy(() => import('./pages/Checkout.jsx'));
 const Orders = lazy(() => import('./pages/Orders.jsx'));
+const TrackOrder = lazy(() => import('./pages/TrackOrder.jsx'));
 const Booking = lazy(() => import('./pages/Booking.jsx'));
 const Contact = lazy(() => import('./pages/Contact.jsx'));
 const NotFound = lazy(() => import('./pages/NotFound.jsx'));
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="cart" element={<Cart />} />
           <Route path="checkout" element={<Checkout />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="track-order" element={<TrackOrder />} />
           <Route path="booking" element={<Booking />} />
           <Route path="contact" element={<Contact />} />
           <Route path="*" element={<NotFound />} />
