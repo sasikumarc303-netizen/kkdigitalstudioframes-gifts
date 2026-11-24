@@ -45,7 +45,7 @@ The site never invents business facts. The following must come from the studio o
 | **Prices** (packages, frames) | Admin → *Packages*, *Products* | Shown as “Contact for pricing” / “Price on request”; frames cannot be added to the cart |
 | **Photographs** (portfolio, services, products) | Admin → *Gallery*, *Services*, *Products* | Tasteful placeholders are shown; no stock photos are used |
 | **Testimonials** | Admin → *Testimonials* | None are shown; the section hides itself |
-| **Cloudinary account** (recommended for Render) | `CLOUDINARY_*` in `.env` | Uploads go to `server/uploads`; use a mounted persistent disk if Cloudinary is not configured |
+| **Media storage** | Select Cloudinary or Backblaze with `STORAGE_PROVIDER` and server-side credentials | Production uploads require configured remote storage or an explicitly selected persistent disk |
 | **SMTP account** (optional) | `SMTP_*` in `.env` | Password-reset links are printed in the server console (development only) |
 | **Razorpay account** (optional) | Set server-only `RAZORPAY_*` variables after testing | Online payment is disabled by default |
 | **Domain name + HTTPS hosting** | Your host | – |
@@ -104,10 +104,12 @@ Copy `.env.example` to `.env` (project root or `server/`). Every variable is doc
 | `SITE_URL` | Public URL (sitemap, canonical links, emails) |
 | `CLIENT_URL` | Extra allowed origin(s). In development set to `http://localhost:5173` so reset links open the right page |
 | `ADMIN_NAME/EMAIL/PASSWORD` | Used by `seed` / `create-admin` only |
-| `CLOUDINARY_*` | When all three are set, originals and previews are stored in Cloudinary; recommended for Render |
+| `STORAGE_PROVIDER` | Optional `backblaze`, `cloudinary`, or `local`. If blank, configured Cloudinary remains selected; local disk is only the development default |
+| `B2_BUCKET_NAME`, `B2_ENDPOINT`, `B2_REGION`, `B2_KEY_ID`, `B2_APPLICATION_KEY` | Server-only Backblaze B2 S3-compatible credentials and endpoint; use a private bucket and a bucket-restricted application key |
+| `CLOUDINARY_*` | Existing Cloudinary credentials and media remain supported; when `STORAGE_PROVIDER` is blank and all three are set, Cloudinary remains selected |
 | `MAX_IMAGE_MB`, `MAX_VIDEO_MB` | Upload size limits |
 | `MEDIA_WATERMARK_TEXT` | Text burned into newly generated public image/video previews |
-| `MEDIA_BASE_URL` | Optional public backend origin for locally stored previews; Render's `RENDER_EXTERNAL_URL` is used by default |
+| `MEDIA_BASE_URL` | Optional public backend origin for local and B2 preview delivery; Render's `RENDER_EXTERNAL_URL` is used by default |
 | `SMTP_*` | Enables emailing password-reset links |
 | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TEMPLATE_NAME`, `WHATSAPP_API_VERSION` | Optional server-only WhatsApp Business Cloud API settings. Automatic order notifications remain disabled unless all four are valid; also configure `WHATSAPP_TEMPLATE_LANGUAGE` (defaults to `en`). |
 | `COOKIE_SECURE`, `TRUST_PROXY` | Default to `true` in production (HTTPS + reverse proxy) |
@@ -200,7 +202,9 @@ Customers submit service, date, time, location and message. The request is store
   ffmpeg -i input.mp4 -vf "scale=854:-2"  -an -c:v libx264 -crf 28 -preset slow -movflags +faststart hero-mobile.mp4
   ```
 - JPG/JPEG, PNG and WebP uploads (as well as the existing GIF/AVIF formats) are validated by **file signature**, resized and composited with an SVG watermark by Sharp, then stored as WebP previews. FFmpeg and the bundled DejaVu Sans font remain in use for watermarked video previews.
-- Originals are stored privately: in Cloudinary authenticated storage when all `CLOUDINARY_*` variables are configured, or under `server/uploads/private` locally. Only the reduced, watermarked preview is served publicly. Render disks are ephemeral unless a persistent disk is mounted, so configure Cloudinary on Render or mount a persistent disk at `server/uploads`; the backend check/startup log reports the selected storage mode.
+- Originals are stored privately in Cloudinary authenticated storage, a private Backblaze B2 bucket, or local storage during development. Public content uses separate reduced, watermarked previews. B2 previews are streamed through stable backend URLs; only the authenticated admin-original route can obtain a short-lived B2 download URL. Signed URLs are never stored in MongoDB or returned to the frontend.
+- To enable B2 for new uploads, configure all five `B2_*` variables on the backend, then explicitly set `STORAGE_PROVIDER=backblaze`. The S3 endpoint must match the configured B2 region. Keep the bucket private and the application key restricted to that bucket with file read, write, delete, and list permissions. `npm --prefix server run check` verifies bucket access when B2 is selected.
+- Provider selection does not migrate existing media. Existing Cloudinary URLs and assets continue working and are deleted through Cloudinary when an admin deletes or replaces them. Do not run `migrate:media` as part of enabling B2; that script is a separate, manual operation and can replace legacy assets.
 - No stock photography is bundled. Until you upload photos, tonal placeholders are shown.
 
 ---
@@ -215,7 +219,7 @@ npm run install:all
 npm run build                     # creates client/dist
 cp .env.example .env              # fill in for production
 ```
-Production `.env` must have at least: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRET` (32+ chars), `SITE_URL=https://your-domain.com`, and the admin details for the first seed. Add `CLOUDINARY_*` unless your host has persistent disk.
+Production `.env` must have at least: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRET` (32+ chars), `SITE_URL=https://your-domain.com`, and the admin details for the first seed. Configure Cloudinary or Backblaze B2 as the explicit remote media provider unless your host has a persistent disk.
 
 ### 2. Seed once
 ```bash
@@ -252,7 +256,7 @@ Then add a certificate with Let’s Encrypt (`certbot --nginx`). `TRUST_PROXY` a
 - Build command: `npm run install:all && npm run build`
 - Start command: `npm start`
 - Set the environment variables from `.env.example` in the platform dashboard.
-- Use **MongoDB Atlas** and **Cloudinary**: most platforms have ephemeral disks, so local uploads would be lost on redeploy.
+- Use **MongoDB Atlas** and a persistent remote media provider (Cloudinary or private Backblaze B2): most platforms have ephemeral disks, so local uploads would be lost on redeploy.
 - Run `npm run seed` once from the platform shell.
 
 ### Cloudflare Pages frontend with a separate Render API
@@ -294,11 +298,11 @@ Recommended: keep `JWT_SECRET` private, use HTTPS only, give team members the mi
 
 ### Public media protection and rollout
 
-- New uploads keep their originals in private local storage or Cloudinary `authenticated` delivery. Only the server-side authenticated admin download endpoint can retrieve them, and it checks the existing media permissions.
+- New uploads keep originals in private local storage, Cloudinary `authenticated` delivery, or a private Backblaze bucket. Only the server-side authenticated admin download endpoint can retrieve originals, and it checks the existing media permissions.
 - Public content receives separate, maximum-1600px watermarked image previews and maximum-720p watermarked MP4 previews. Preview URLs are intentionally public; they are not originals.
-- FFmpeg renders the watermark using a bundled DejaVu Sans font, so the preview pipeline does not depend on host-installed fonts or Sharp.
+- FFmpeg renders video watermarks using a bundled DejaVu Sans font; Sharp composites the same branding onto image previews with SVG.
 - The default watermark is `© KK DIGITAL STUDIO`. Set `MEDIA_WATERMARK_TEXT` on Render before migrating or uploading media. Watermarks are burned into generated previews, so changing the value later requires regenerating previews.
-- Back up MongoDB and media storage before rollout. After deploying the backend, run `npm --prefix server run migrate:media` once from the project directory. Wait for a zero-failure summary before considering existing uploads migrated. This replaces known Media-library references and removes their old public assets. A migration failure exits non-zero; resolve it and rerun. Existing Cloudinary `upload` URLs remain publicly accessible until their records are successfully migrated.
+- Back up MongoDB and media storage before any migration. Enabling B2 does not migrate or delete existing media: existing Cloudinary URLs stay as-is and continue to display. `npm --prefix server run migrate:media` is an explicit manual migration that can replace references and remove old assets; do not run it unless that separate migration is intended and approved.
 - Render supplies `RENDER_EXTERNAL_URL` for local preview delivery. On other hosts, set `MEDIA_BASE_URL` to the backend's public origin. Keep Cloudinary credentials only in the backend environment.
 - Existing external/manual image URLs that are not backed by a Media-library record cannot be migrated or made private automatically; replace them with protected Media-library uploads. Keep public Cloudinary previews separate from authenticated originals. Strict transformation restrictions are an additional Cloudinary control, but enable them only after allowing the transformations the site uses.
 - There is no customer-album feature in this project. Any future private-album route must authorize each request against the album owner/customer and must never reuse the public gallery endpoint.

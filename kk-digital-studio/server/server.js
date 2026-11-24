@@ -13,7 +13,7 @@ import adminRoutes from './routes/admin.js';
 import { sitemap, robots } from './controllers/seo.js';
 import { errorHandler, notFoundApi } from './middleware/errors.js';
 import { corsMiddleware } from './middleware/cors.js';
-import { PUBLIC_MEDIA_ROOT } from './services/media.js';
+import { getMediaStorageProvider, PUBLIC_MEDIA_ROOT } from './services/media.js';
 import { getConfig, ensureConfigExists } from './services/siteConfig.js';
 import { startOrderNotificationWorker } from './services/orderNotifications.js';
 import { DEFAULT_CONFIG } from './services/defaults.js';
@@ -148,6 +148,14 @@ if (fs.existsSync(indexFile)) {
 app.use(errorHandler);
 
 async function start() {
+  let storageProvider;
+  try {
+    storageProvider = getMediaStorageProvider();
+  } catch (error) {
+    console.error(`[media] ${error.message}`);
+    process.exit(1);
+    return;
+  }
   try {
     await connectDB();
   } catch (e) {
@@ -159,7 +167,7 @@ async function start() {
   if ((await AdminUser.countDocuments()) === 0) {
     console.warn('[setup] No admin account exists yet. Run `npm run seed` (or `npm run create-admin`) after setting ADMIN_EMAIL and ADMIN_PASSWORD in .env.');
   }
-  console.log(`[media] storage: ${env.cloudinaryEnabled ? 'Cloudinary' : 'local disk (server/uploads) – configure CLOUDINARY_* for cloud storage'}`);
+  console.log(`[media] storage: ${storageProvider}${storageProvider === 'local' ? ' (server/uploads)' : ''}`);
   app.listen(env.port, () => console.log(`[server] listening on http://localhost:${env.port}`));
 }
 

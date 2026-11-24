@@ -4,6 +4,7 @@ import * as c from '../controllers/public.js';
 import * as payments from '../controllers/payments.js';
 import { honeypot } from '../middleware/validate.js';
 import { orderLookupLimit } from '../middleware/orderLookupLimit.js';
+import * as media from '../controllers/media.js';
 
 const limiter = (windowMin, max, message) =>
   rateLimit({ windowMs: windowMin * 60 * 1000, max, standardHeaders: true, legacyHeaders: false, message: { message } });
@@ -15,6 +16,8 @@ const paymentLimit = limiter(15, 30, 'Too many payment attempts. Please wait a m
 
 const r = Router();
 
+r.head('/media/previews/b2', media.backblazePreviewHead);
+r.get('/media/previews/b2', media.backblazePreview);
 r.get('/site', c.site);
 r.get('/home', c.home);
 r.get('/services', c.listServices);

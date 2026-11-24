@@ -4,11 +4,21 @@ import { connectDB, disconnectDB } from '../config/db.js';
 import AdminUser from '../models/AdminUser.js';
 import Service from '../models/Service.js';
 import Product from '../models/Product.js';
+import { getMediaStorageProvider } from '../services/media.js';
+import { checkBackblazeConnection } from '../services/backblaze.js';
 
-console.log('Media storage :', env.cloudinaryEnabled ? 'Cloudinary' : 'local disk');
+const storageProvider = getMediaStorageProvider();
+console.log('Media storage :', storageProvider);
+if (storageProvider === 'backblaze') {
+  await checkBackblazeConnection();
+  console.log('Backblaze B2  : connected');
+}
 console.log('SMTP          :', env.smtpEnabled ? 'configured' : 'not configured (password-reset emails are logged to the console in dev)');
 await connectDB();
-console.log('Admin users   :', await AdminUser.countDocuments());
-console.log('Services      :', await Service.countDocuments());
-console.log('Products      :', await Product.countDocuments());
-await disconnectDB();
+try {
+  console.log('Admin users   :', await AdminUser.countDocuments());
+  console.log('Services      :', await Service.countDocuments());
+  console.log('Products      :', await Product.countDocuments());
+} finally {
+  await disconnectDB();
+}

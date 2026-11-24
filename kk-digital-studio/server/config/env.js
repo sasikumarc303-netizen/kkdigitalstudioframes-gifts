@@ -47,6 +47,14 @@ export const env = {
     apiKey: process.env.CLOUDINARY_API_KEY || '',
     apiSecret: process.env.CLOUDINARY_API_SECRET || '',
   },
+  storageProvider: (process.env.STORAGE_PROVIDER || '').trim().toLowerCase(),
+  backblaze: {
+    bucketName: process.env.B2_BUCKET_NAME || '',
+    endpoint: process.env.B2_ENDPOINT || '',
+    region: process.env.B2_REGION || '',
+    keyId: process.env.B2_KEY_ID || '',
+    applicationKey: process.env.B2_APPLICATION_KEY || '',
+  },
   maxImageMB: int(process.env.MAX_IMAGE_MB, 10),
   maxVideoMB: int(process.env.MAX_VIDEO_MB, 100),
   mediaWatermarkText: String(process.env.MEDIA_WATERMARK_TEXT || '')

@@ -9,6 +9,7 @@ import sharp from 'sharp';
 import { v2 as cloudinary } from 'cloudinary';
 import { env, SERVER_ROOT } from '../config/env.js';
 import { ApiError } from '../utils/helpers.js';
+import { backblazePreviewUrl, getBackblazeStorage, validateBackblazeConfig } from './backblaze.js';
 import Media from '../models/Media.js';
 import Service from '../models/Service.js';
 import GalleryImage from '../models/GalleryImage.js';
@@ -76,6 +77,23 @@ const safeName = (n) =>
     .slice(0, 40) || 'file';
 
 const watermarkText = env.mediaWatermarkText || '© KK DIGITAL STUDIO';
+
+export function getMediaStorageProvider() {
+  const selected = env.storageProvider;
+  if (selected === 'backblaze') {
+    validateBackblazeConfig(env.backblaze);
+    return selected;
+  }
+  if (selected === 'cloudinary') {
+    if (!env.cloudinaryEnabled) throw new ApiError(503, 'Cloudinary is not configured as the media storage provider');
+    return selected;
+  }
+  if (selected === 'local') return selected;
+  if (selected) throw new ApiError(503, 'The configured media storage provider is not supported');
+  if (env.cloudinaryEnabled) return 'cloudinary';
+  if (env.isProd) throw new ApiError(503, 'Configure a persistent media storage provider before accepting uploads');
+  return 'local';
+}
 
 async function prepareWatermark(workDir) {
   await Promise.all([
@@ -179,9 +197,9 @@ async function uploadCloudinary(filePath, kind, folder, publicId, type) {
     : cloudinary.uploader.upload(filePath, options);
 }
 
-async function storePrivateOriginal(file, kind, mime, folderSlug, id, privateRoot) {
+async function storePrivateOriginal(file, kind, mime, folderSlug, id, privateRoot, provider) {
   const extension = EXT[mime];
-  if (env.cloudinaryEnabled) {
+  if (provider === 'cloudinary') {
     const asset = await uploadCloudinary(
       file.path,
       kind,
@@ -192,6 +210,17 @@ async function storePrivateOriginal(file, kind, mime, folderSlug, id, privateRoo
     return {
       originalProvider: 'cloudinary',
       originalPublicId: asset.public_id,
+      originalMime: mime,
+      originalBytes: file.size,
+      originalFilename: `${safeName(file.originalname)}.${extension}`,
+    };
+  }
+  if (provider === 'backblaze') {
+    const key = `private/${folderSlug}/${id}.${extension}`;
+    await getBackblazeStorage().uploadFile(key, file.path, { contentType: mime });
+    return {
+      originalProvider: 'backblaze',
+      originalPublicId: key,
       originalMime: mime,
       originalBytes: file.size,
       originalFilename: `${safeName(file.originalname)}.${extension}`,
@@ -210,9 +239,9 @@ async function storePrivateOriginal(file, kind, mime, folderSlug, id, privateRoo
   };
 }
 
-async function storePublicPreview(files, kind, id, uploadRoot) {
+async function storePublicPreview(files, kind, id, uploadRoot, provider) {
   const { previewPath, posterPath, width, height } = files;
-  if (env.cloudinaryEnabled) {
+  if (provider === 'cloudinary') {
     let preview;
     let poster = null;
     try {
@@ -251,6 +280,40 @@ async function storePublicPreview(files, kind, id, uploadRoot) {
       width: width || preview.width,
       height: height || preview.height,
       duration: preview.duration,
+    };
+  }
+
+  if (provider === 'backblaze') {
+    const storage = getBackblazeStorage();
+    const extension = kind === 'video' ? 'mp4' : 'webp';
+    const previewKey = `previews/${id}.${extension}`;
+    const posterKey = posterPath ? `previews/${id}-poster.jpg` : '';
+    const uploadedKeys = [];
+    try {
+      await storage.uploadFile(previewKey, previewPath, {
+        contentType: kind === 'video' ? 'video/mp4' : 'image/webp',
+        isPreview: true,
+      });
+      uploadedKeys.push(previewKey);
+      if (posterPath) {
+        await storage.uploadFile(posterKey, posterPath, { contentType: 'image/jpeg', isPreview: true });
+        uploadedKeys.push(posterKey);
+      }
+    } catch (error) {
+      const results = await Promise.allSettled(uploadedKeys.map((key) => storage.deleteObject(key)));
+      if (results.some((result) => result.status === 'rejected')) {
+        console.error('[media] Failed to remove an incomplete Backblaze preview upload');
+      }
+      throw error;
+    }
+    return {
+      provider: 'backblaze',
+      url: backblazePreviewUrl(previewKey),
+      publicId: previewKey,
+      poster: posterKey ? backblazePreviewUrl(posterKey) : '',
+      posterPublicId: posterKey,
+      width,
+      height,
     };
   }
 
@@ -326,7 +389,9 @@ export async function storeUpload(file, {
   let workDir;
   let original;
   let preview;
+  let provider;
   try {
+    provider = getMediaStorageProvider();
     const sniffed = sniffMime(await readHead(file.path));
     if (!sniffed) throw new ApiError(415, `"${file.originalname}" is not a supported image or video file`);
     const kind = sniffed.startsWith('video/') ? 'video' : 'image';
@@ -346,8 +411,8 @@ export async function storeUpload(file, {
     workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kk-protected-media-'));
     const files = await createPreviewFiles(file.path, kind, workDir);
     const id = crypto.randomUUID().replace(/-/g, '');
-    original = await storePrivateOriginal(file, kind, sniffed, folderSlug, id, privateRoot);
-    preview = await storePublicPreview(files, kind, id, uploadRoot);
+    original = await storePrivateOriginal(file, kind, sniffed, folderSlug, id, privateRoot, provider);
+    preview = await storePublicPreview(files, kind, id, uploadRoot, provider);
     return { ...base, ...preview, ...original };
   } catch (error) {
     const cleanup = [];
@@ -374,15 +439,20 @@ export async function removeStored(media, { uploadRoot = UPLOAD_ROOT, privateRoo
   const resourceType = media.type === 'video' ? 'video' : 'image';
   if (media.provider === 'cloudinary' && media.publicId) {
     await destroyCloudinary(media.publicId, resourceType, 'upload');
+  } else if (media.provider === 'backblaze' && media.publicId) {
+    await getBackblazeStorage().deleteObject(media.publicId);
   } else if (media.provider === 'local' && media.publicId) {
     await removeLocalPath(uploadRoot, media.publicId);
   }
   if (media.posterPublicId) {
     if (media.provider === 'cloudinary') await destroyCloudinary(media.posterPublicId, 'image', 'upload');
+    else if (media.provider === 'backblaze') await getBackblazeStorage().deleteObject(media.posterPublicId);
     else await removeLocalPath(uploadRoot, media.posterPublicId);
   }
   if (media.originalProvider === 'cloudinary') {
     await destroyCloudinary(media.originalPublicId, resourceType, 'authenticated');
+  } else if (media.originalProvider === 'backblaze') {
+    await getBackblazeStorage().deleteObject(media.originalPublicId);
   } else if (media.originalProvider === 'local') {
     await removeLocalPath(privateRoot, media.originalPath);
   }
