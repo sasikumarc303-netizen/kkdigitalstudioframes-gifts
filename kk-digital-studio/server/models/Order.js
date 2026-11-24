@@ -11,6 +11,8 @@ const itemSchema = new mongoose.Schema(
     sku: String,
     image: String,
     unitPrice: Number,
+    compareAtPrice: Number,
+    discount: { type: Number, default: 0 },
     quantity: Number,
     lineTotal: Number,
   },
@@ -49,11 +51,18 @@ const schema = new mongoose.Schema(
     fulfilment: { type: String, enum: ['delivery', 'pickup'], default: 'delivery' },
     items: [itemSchema],
     subtotal: Number,
+    discount: { type: Number, default: 0 },
     shipping: { type: Number, default: 0 },
     total: Number,
     currency: { type: String, default: 'INR' },
     paymentMethod: { type: String, default: 'enquiry' }, // enquiry | cod | online (online only when a provider is configured)
     paymentStatus: { type: String, enum: PAYMENT_STATUSES, default: 'Unpaid' },
+    razorpayOrderId: { type: String, trim: true },
+    razorpayPaymentId: { type: String, trim: true },
+    paymentAmount: Number,
+    paymentDate: Date,
+    razorpayOrderCreationToken: { type: String, select: false },
+    razorpayOrderCreationStartedAt: { type: Date, select: false },
     status: { type: String, enum: ORDER_STATUSES, default: 'Pending', index: true },
     whatsappOptIn: { type: Boolean, default: false },
     whatsappOptInAt: { type: Date, default: null },
@@ -66,5 +75,7 @@ const schema = new mongoose.Schema(
 );
 schema.index({ 'contact.name': 'text', 'contact.phone': 'text', orderNumber: 'text' });
 schema.index({ checkoutRequestHash: 1 }, { unique: true, sparse: true });
+schema.index({ razorpayOrderId: 1 }, { unique: true, sparse: true });
+schema.index({ razorpayPaymentId: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model('Order', schema);

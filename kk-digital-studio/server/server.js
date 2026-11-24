@@ -17,6 +17,7 @@ import { PUBLIC_MEDIA_ROOT } from './services/media.js';
 import { getConfig, ensureConfigExists } from './services/siteConfig.js';
 import { startOrderNotificationWorker } from './services/orderNotifications.js';
 import { DEFAULT_CONFIG } from './services/defaults.js';
+import * as payments from './controllers/payments.js';
 import Product from './models/Product.js';
 import AdminUser from './models/AdminUser.js';
 import { SEO_ORIGIN } from '../seo.mjs';
@@ -32,13 +33,14 @@ app.use(
       useDefaults: true,
       directives: {
         'default-src': ["'self'"],
-        'script-src': ["'self'"],
+        'script-src': ["'self'", 'https://checkout.razorpay.com'],
         'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
         'img-src': ["'self'", 'data:', 'blob:', 'https://res.cloudinary.com'],
         'media-src': ["'self'", 'blob:', 'https://res.cloudinary.com'],
-        'connect-src': ["'self'"],
-        'frame-src': ['https://www.google.com'],
+        'connect-src': ["'self'", 'https://api.razorpay.com', 'https://*.razorpay.com'],
+        'frame-src': ['https://www.google.com', 'https://api.razorpay.com', 'https://*.razorpay.com'],
+        'form-action': ["'self'", 'https://api.razorpay.com', 'https://*.razorpay.com'],
         'object-src': ["'none'"],
         'upgrade-insecure-requests': env.isProd ? [] : null,
       },
@@ -47,6 +49,7 @@ app.use(
   })
 );
 app.use(compression());
+app.use('/api/payments/razorpay/webhook', express.raw({ type: 'application/json', limit: '1mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
@@ -68,6 +71,7 @@ app.use('/api/media/previews', express.static(PUBLIC_MEDIA_ROOT, {
   setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
 }));
 app.use('/api/admin', adminRoutes);
+app.post('/api/payments/razorpay/webhook', payments.webhook);
 app.use('/api', publicRoutes);
 app.use('/api', notFoundApi);
 

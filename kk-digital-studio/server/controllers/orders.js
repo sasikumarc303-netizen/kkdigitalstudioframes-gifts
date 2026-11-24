@@ -64,6 +64,9 @@ export const setStatus = asyncHandler(async (req, res) => {
       if (!canTransitionOrderStatus(from, status, o.fulfilment)) {
         throw new ApiError(409, `Order cannot move from ${from} to ${status}.`);
       }
+      if (status === 'Cancelled' && o.paymentMethod === 'online' && o.paymentStatus === 'Paid') {
+        throw new ApiError(409, 'Refund this online payment first, then cancel the order.');
+      }
       o.status = status;
       if (status === 'Cancelled') await restoreStock(o, { session });
       o.history.push({
@@ -114,6 +117,14 @@ export const retryNotification = asyncHandler(async (req, res) => {
 export const update = asyncHandler(async (req, res) => {
   const data = validate({ adminNotes: { type: 'text', max: 2000 }, paymentStatus: { type: 'enum', values: PAYMENT_STATUSES } }, req.body);
   const o = await byId(req.params.id);
+  if (
+    o.paymentMethod === 'online'
+    && data.paymentStatus
+    && data.paymentStatus !== o.paymentStatus
+    && !(o.paymentStatus === 'Paid' && data.paymentStatus === 'Refunded')
+  ) {
+    throw new ApiError(409, 'Online payment status can only be updated by verified payment events. Refund the payment in Razorpay before marking it refunded.');
+  }
   if ('adminNotes' in req.body) o.adminNotes = data.adminNotes || '';
   if (data.paymentStatus && data.paymentStatus !== o.paymentStatus) {
     o.history.push({ status: o.status, note: `Payment: ${o.paymentStatus} → ${data.paymentStatus}`, by: req.user.name, at: new Date() });

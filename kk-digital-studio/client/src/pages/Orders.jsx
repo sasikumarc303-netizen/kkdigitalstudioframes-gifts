@@ -86,7 +86,7 @@ export default function Orders() {
                     </li>
                   ))}
                 </ul>
-                <p className="muted small">Payment: {o.paymentStatus} · {o.paymentMethod === 'cod' ? 'Cash on delivery' : 'Arranged after confirmation'} · {o.fulfilment === 'pickup' ? 'Studio pickup' : 'Delivery'}</p>
+                <p className="muted small">Payment: {o.paymentStatus} · {o.paymentMethod === 'cod' ? 'Cash on delivery' : o.paymentMethod === 'online' ? 'Razorpay online payment' : 'Arranged after confirmation'} · {o.fulfilment === 'pickup' ? 'Studio pickup' : 'Delivery'}</p>
               </article>
             ))}
           </div>

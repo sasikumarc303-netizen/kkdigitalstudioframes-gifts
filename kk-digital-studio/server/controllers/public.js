@@ -29,8 +29,10 @@ const hashCheckoutRequestKey = (key) => createHash('sha256').update(key).digest(
 const checkoutOrderResponse = (order) => ({
   orderNumber: order.orderNumber,
   status: order.status,
+  paymentStatus: order.paymentStatus,
   total: order.total,
   subtotal: order.subtotal,
+  discount: order.discount || 0,
   shipping: order.shipping,
   paymentMethod: order.paymentMethod,
   items: order.items,
@@ -157,7 +159,15 @@ export const createOrder = asyncHandler(async (req, res) => {
       : addressRules,
     body.address || {}
   );
-  const paymentMethod = body.paymentMethod === 'cod' && config.commerce.allowCod ? 'cod' : 'enquiry';
+  const requestedPaymentMethod = ['cod', 'online'].includes(body.paymentMethod) ? body.paymentMethod : 'enquiry';
+  if (requestedPaymentMethod === 'cod' && !config.commerce.allowCod) throw new ApiError(422, 'Cash on delivery is not available');
+  if (requestedPaymentMethod === 'online' && !paymentInfo().onlineEnabled) {
+    throw new ApiError(422, 'Online payment is not available yet. Please choose another payment method.');
+  }
+  if (requestedPaymentMethod === 'online' && config.general.currency !== 'INR') {
+    throw new ApiError(422, 'Online checkout currently supports INR orders only.');
+  }
+  const paymentMethod = requestedPaymentMethod;
   const notes = validate({ notes: { type: 'text', max: 1000 } }, { notes: body.notes }).notes || '';
   const whatsappOptIn = validate({ whatsappOptIn: { type: 'boolean', default: false } }, body).whatsappOptIn;
   const items = cartItemsSchema(body.items);
@@ -195,12 +205,14 @@ export const createOrder = asyncHandler(async (req, res) => {
           contact: { ...contact, phoneKey: phoneKey(contact.phone) },
           shippingAddress: address,
           fulfilment,
-          items: priced.lines.map(({ product, variantId, name, size, finish, sku, image, unitPrice, quantity, lineTotal }) => ({ product, variantId, name, size, finish, sku, image, unitPrice, quantity, lineTotal })),
+          items: priced.lines.map(({ product, variantId, name, size, finish, sku, image, unitPrice, compareAtPrice, discount, quantity, lineTotal }) => ({ product, variantId, name, size, finish, sku, image, unitPrice, compareAtPrice, discount, quantity, lineTotal })),
           subtotal: priced.subtotal,
+          discount: priced.discount,
           shipping,
           total: priced.subtotal + shipping,
           currency: config.general.currency,
           paymentMethod,
+          paymentAmount: paymentMethod === 'online' ? priced.subtotal + shipping : undefined,
           whatsappOptIn,
           whatsappOptInAt: whatsappOptIn ? new Date() : null,
           notes,
@@ -237,6 +249,7 @@ const publicOrder = (o) => ({
   fulfilment: o.fulfilment,
   items: o.items,
   subtotal: o.subtotal,
+  discount: o.discount || 0,
   shipping: o.shipping,
   total: o.total,
   createdAt: o.createdAt,

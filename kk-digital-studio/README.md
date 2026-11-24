@@ -47,7 +47,7 @@ The site never invents business facts. The following must come from the studio o
 | **Testimonials** | Admin → *Testimonials* | None are shown; the section hides itself |
 | **Cloudinary account** (optional, recommended) | `CLOUDINARY_*` in `.env` | Uploads go to `server/uploads` on the server’s disk |
 | **SMTP account** (optional) | `SMTP_*` in `.env` | Password-reset links are printed in the server console (development only) |
-| **Payment gateway** (optional) | Implement in `server/services/payments.js` | Orders are enquiry-based (see below) |
+| **Razorpay account** (optional) | Set server-only `RAZORPAY_*` variables after testing | Online payment is disabled by default |
 | **Domain name + HTTPS hosting** | Your host | – |
 
 ---
@@ -112,6 +112,11 @@ Copy `.env.example` to `.env` (project root or `server/`). Every variable is doc
 | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TEMPLATE_NAME`, `WHATSAPP_API_VERSION` | Optional server-only WhatsApp Business Cloud API settings. Automatic order notifications remain disabled unless all four are valid; also configure `WHATSAPP_TEMPLATE_LANGUAGE` (defaults to `en`). |
 | `COOKIE_SECURE`, `TRUST_PROXY` | Default to `true` in production (HTTPS + reverse proxy) |
 | `PAYMENT_PROVIDER` | `none` (default) |
+| `RAZORPAY_ENABLED` | `false` (default); set `true` only after staging tests pass |
+| `RAZORPAY_TEST_MODE` | `true` by default; requires an `rzp_test_` key ID. Live keys require explicitly setting this to `false` |
+| `RAZORPAY_ALLOW_TEST_MODE` | `false` (default); set `true` only on a separate staging service when it runs with `NODE_ENV=production` |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Server-side Razorpay API credentials; never use `VITE_` variables |
+| `RAZORPAY_WEBHOOK_SECRET` | Server-side signing secret configured for the Razorpay webhook |
 | `VITE_API_URL` | Frontend API origin (for example, `https://kk-digital-studio-backend.onrender.com`); set in Cloudflare Pages build variables, without `/api` |
 
 ---
@@ -169,10 +174,14 @@ Built-in defaults (`server/services/defaults.js`) are only a starting point, mer
 ## Shop, orders and payments
 
 - Cart is saved in the browser; **prices are always recalculated on the server** at checkout (the browser’s numbers are never trusted).
+- The selected variant price is the charged price; any compare-at savings and shipping are calculated from server-side product and site settings.
 - Stock is reserved atomically when an order is placed and restored when it is cancelled. Two customers cannot buy the last unit.
 - Products or variants with price `0` show “Price on request” and cannot be added to the cart; customers can send an enquiry instead.
-- **Online payment is not enabled.** Checkout creates an **enquiry-based order** (and optionally cash on delivery or store pickup, configurable in Website settings); the studio confirms and arranges payment with the customer. No gateway credentials are collected or stored.
-- To add a gateway such as Razorpay or Stripe, implement `createPaymentSession` in `server/services/payments.js` and set `PAYMENT_PROVIDER`. Keep gateway keys in `.env`, never in the database or the client.
+- Online payment is **disabled by default** (`RAZORPAY_ENABLED=false`); enquiry checkout and cash on delivery continue to work as before.
+- Razorpay orders use server-priced products, variants and shipping. The server verifies the checkout signature and fetches the payment to confirm captured status, amount, currency and provider order ID before recording `Paid`. Test keys are required while `RAZORPAY_TEST_MODE=true`; live keys are rejected in test mode.
+- Test against a separate staging service and MongoDB database so test orders and stock reservations do not touch customer data. Set staging `PAYMENT_PROVIDER=razorpay`, `RAZORPAY_TEST_MODE=true`, `RAZORPAY_ENABLED=true`, and use test credentials only. If that service has `NODE_ENV=production`, also set `RAZORPAY_ALLOW_TEST_MODE=true` there. Keep `RAZORPAY_ALLOW_TEST_MODE=false` and `RAZORPAY_ENABLED=false` on the public production service until testing is complete.
+- Configure the Razorpay webhook URL as `https://kk-digital-studio-backend.onrender.com/api/payments/razorpay/webhook` (use the corresponding staging backend URL while testing). Subscribe to **`payment.captured`** and **`payment.failed`**. Copy the webhook signing secret to Render as `RAZORPAY_WEBHOOK_SECRET`; do not use the API key secret for webhook verification.
+- Render staging variables: `PAYMENT_PROVIDER=razorpay`, `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` with test credentials, `RAZORPAY_WEBHOOK_SECRET`, `RAZORPAY_TEST_MODE=true`, `RAZORPAY_ENABLED=true`, and `RAZORPAY_ALLOW_TEST_MODE=true` only if staging runs with `NODE_ENV=production`. On the public production service, keep `RAZORPAY_ALLOW_TEST_MODE=false` and `RAZORPAY_ENABLED=false` until testing and explicit owner approval. Do not place any secret in frontend/build variables. Do not change to live mode automatically; after owner approval, switch to live credentials and set `RAZORPAY_TEST_MODE=false`, then explicitly enable online payments.
 
 ---
 

@@ -21,4 +21,4 @@ export const ROLE_DEFAULTS = {
 export const BOOKING_STATUSES = ['Pending', 'Confirmed', 'Rejected', 'Completed', 'Cancelled'];
 export const ORDER_STATUSES = ['Pending', 'Confirmed', 'Processing', 'Production', 'Ready', 'Shipped', 'Delivered', 'Cancelled'];
 export const ENQUIRY_STATUSES = ['New', 'In Progress', 'Resolved', 'Closed'];
-export const PAYMENT_STATUSES = ['Unpaid', 'Paid', 'Refunded'];
+export const PAYMENT_STATUSES = ['Unpaid', 'Pending', 'Failed', 'Paid', 'Refunded'];

@@ -75,6 +75,14 @@ export const env = {
     password: process.env.ADMIN_PASSWORD || '',
   },
   paymentProvider: (process.env.PAYMENT_PROVIDER || 'none').toLowerCase(),
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID || '',
+    keySecret: process.env.RAZORPAY_KEY_SECRET || '',
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
+    enabled: bool(process.env.RAZORPAY_ENABLED, false),
+    testMode: bool(process.env.RAZORPAY_TEST_MODE, true),
+    allowTestMode: bool(process.env.RAZORPAY_ALLOW_TEST_MODE, false),
+  },
   // Seed values for contact details (editable later in the admin panel). Never invented.
   seedContact: {
     phone: process.env.BUSINESS_PHONE || '',
