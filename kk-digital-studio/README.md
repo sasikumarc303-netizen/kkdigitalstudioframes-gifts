@@ -45,7 +45,7 @@ The site never invents business facts. The following must come from the studio o
 | **Prices** (packages, frames) | Admin → *Packages*, *Products* | Shown as “Contact for pricing” / “Price on request”; frames cannot be added to the cart |
 | **Photographs** (portfolio, services, products) | Admin → *Gallery*, *Services*, *Products* | Tasteful placeholders are shown; no stock photos are used |
 | **Testimonials** | Admin → *Testimonials* | None are shown; the section hides itself |
-| **Cloudinary account** (optional, recommended) | `CLOUDINARY_*` in `.env` | Uploads go to `server/uploads` on the server’s disk |
+| **Cloudinary account** (recommended for Render) | `CLOUDINARY_*` in `.env` | Uploads go to `server/uploads`; use a mounted persistent disk if Cloudinary is not configured |
 | **SMTP account** (optional) | `SMTP_*` in `.env` | Password-reset links are printed in the server console (development only) |
 | **Razorpay account** (optional) | Set server-only `RAZORPAY_*` variables after testing | Online payment is disabled by default |
 | **Domain name + HTTPS hosting** | Your host | – |
@@ -54,7 +54,7 @@ The site never invents business facts. The following must come from the studio o
 
 ## Requirements
 
-- **Node.js 18.18 or newer** (20 LTS recommended) and npm
+- **Node.js 20.9 or newer** (22 LTS recommended) and npm
 - **MongoDB 6+** (local install, Docker, or a free MongoDB Atlas cluster)
 
 ---
@@ -104,7 +104,7 @@ Copy `.env.example` to `.env` (project root or `server/`). Every variable is doc
 | `SITE_URL` | Public URL (sitemap, canonical links, emails) |
 | `CLIENT_URL` | Extra allowed origin(s). In development set to `http://localhost:5173` so reset links open the right page |
 | `ADMIN_NAME/EMAIL/PASSWORD` | Used by `seed` / `create-admin` only |
-| `CLOUDINARY_*` | When all three are set, uploads go to Cloudinary |
+| `CLOUDINARY_*` | When all three are set, originals and previews are stored in Cloudinary; recommended for Render |
 | `MAX_IMAGE_MB`, `MAX_VIDEO_MB` | Upload size limits |
 | `MEDIA_WATERMARK_TEXT` | Text burned into newly generated public image/video previews |
 | `MEDIA_BASE_URL` | Optional public backend origin for locally stored previews; Render's `RENDER_EXTERNAL_URL` is used by default |
@@ -199,7 +199,8 @@ Customers submit service, date, time, location and message. The request is store
   ffmpeg -i input.mp4 -vf "scale=1280:-2" -an -c:v libx264 -crf 26 -preset slow -movflags +faststart hero.mp4
   ffmpeg -i input.mp4 -vf "scale=854:-2"  -an -c:v libx264 -crf 28 -preset slow -movflags +faststart hero-mobile.mp4
   ```
-- Image uploads are validated by **file signature** (not just extension), limited by size, and stored on Cloudinary (if configured) or `server/uploads`. FFmpeg and the bundled DejaVu Sans font generate watermarked previews.
+- JPG/JPEG, PNG and WebP uploads (as well as the existing GIF/AVIF formats) are validated by **file signature**, resized and composited with an SVG watermark by Sharp, then stored as WebP previews. FFmpeg and the bundled DejaVu Sans font remain in use for watermarked video previews.
+- Originals are stored privately: in Cloudinary authenticated storage when all `CLOUDINARY_*` variables are configured, or under `server/uploads/private` locally. Only the reduced, watermarked preview is served publicly. Render disks are ephemeral unless a persistent disk is mounted, so configure Cloudinary on Render or mount a persistent disk at `server/uploads`; the backend check/startup log reports the selected storage mode.
 - No stock photography is bundled. Until you upload photos, tonal placeholders are shown.
 
 ---

@@ -65,7 +65,7 @@ export default function MediaLibrary() {
   return (
     <>
       <PageHeader title="Media library" subtitle="Every image and video uploaded to your website."
-        actions={<><input ref={fileRef} type="file" multiple hidden accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime" onChange={(e) => upload(e.target.files)} /><Btn icon="upload" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? 'Uploading…' : 'Upload files'}</Btn></>} />
+        actions={<><input ref={fileRef} type="file" multiple hidden accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime" onChange={(e) => upload(e.target.files)} /><Btn icon="upload" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? 'Uploading…' : 'Upload files'}</Btn></>} />
       <Chips value={type} onChange={setType} options={[{ value: '', label: 'All' }, { value: 'image', label: 'Images' }, { value: 'video', label: 'Videos' }]} />
       <div className="a-toolbar"><SearchBox value={list.q} onChange={list.setQ} placeholder="Search by name or description…" /></div>
       <ErrorBox error={list.error} onRetry={list.reload} />
