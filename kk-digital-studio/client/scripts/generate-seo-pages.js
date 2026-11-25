@@ -12,6 +12,7 @@ import { PACKAGE_SEEDS, SERVICE_SEEDS } from '../../public-content.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(scriptDir, '..');
+const projectDir = path.resolve(clientDir, '..');
 const distDir = path.join(clientDir, 'dist');
 const template = await readFile(path.join(distDir, 'index.html'), 'utf8');
 
@@ -221,7 +222,6 @@ if (['/admin', '/account', '/cart', '/checkout', '/orders', '/track-order'].some
 
 const headers = (await readFile(path.join(distDir, '_headers'), 'utf8')).replace(/\r\n/g, '\n');
 for (const requiredHeader of [
-  '/sitemap.xml\n  Content-Type: application/xml; charset=utf-8',
   '/robots.txt\n  Content-Type: text/plain; charset=utf-8',
   '/admin\n  X-Robots-Tag: noindex, nofollow',
   '/admin/*\n  X-Robots-Tag: noindex, nofollow',
@@ -244,14 +244,30 @@ const redirects = (await readFile(path.join(distDir, '_redirects'), 'utf8'))
   .filter((line) => line && !line.startsWith('#'));
 if (
   !redirects[0]?.startsWith('/api/* ') ||
-  redirects[1] !== '/sitemap.xml  https://kk-digital-studio-backend.onrender.com/sitemap.xml  200' ||
+  redirects.some((line) => line.startsWith('/sitemap.xml ')) ||
   redirects.at(-1) !== '/*  /index.html  200'
 ) {
-  throw new Error('Cloudflare Pages redirects must proxy the sitemap and keep the SPA fallback last.');
+  throw new Error('The sitemap must bypass _redirects and the SPA fallback must remain last.');
+}
+const sitemapFunction = await readFile(path.join(projectDir, 'functions', 'sitemap.xml.js'), 'utf8');
+if (
+  !sitemapFunction.includes('export async function onRequestGet') ||
+  !sitemapFunction.includes('application/xml; charset=utf-8') ||
+  !sitemapFunction.includes('text/plain; charset=utf-8')
+) {
+  throw new Error('The Cloudflare Pages sitemap Function is missing or does not define safe response types.');
+}
+const functionRoutes = JSON.parse(await readFile(path.join(distDir, '_routes.json'), 'utf8'));
+if (
+  functionRoutes.version !== 1 ||
+  JSON.stringify(functionRoutes.include) !== JSON.stringify(['/sitemap.xml']) ||
+  functionRoutes.exclude.length !== 0
+) {
+  throw new Error('Cloudflare Pages Functions must only be invoked for /sitemap.xml.');
 }
 try {
   await access(path.join(distDir, 'sitemap.xml'));
-  throw new Error('A static sitemap would shadow the Cloudflare Pages sitemap proxy.');
+  throw new Error('A static sitemap would shadow the Cloudflare Pages Function.');
 } catch (error) {
   if (error.code !== 'ENOENT') throw error;
 }
