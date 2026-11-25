@@ -174,7 +174,7 @@ Built-in defaults (`server/services/defaults.js`) are only a starting point, mer
 
 ## Local SEO and indexing
 
-The shared SEO defaults in `seo.mjs` provide unique titles and descriptions for public routes. `npm run build` generates static HTML for those routes, including structured LocalBusiness data, so crawlers can read useful content before running JavaScript. Cloudflare Pages proxies `/sitemap.xml` to the Render sitemap endpoint, which lists the public routes and published products. The build validates the sitemap route, robots file, and noindex headers.
+The shared SEO defaults in `seo.mjs` provide unique titles and descriptions for public routes. `npm run build` generates static HTML for those routes, including structured LocalBusiness data, so crawlers can read useful content before running JavaScript. A root-level Cloudflare Pages Function at `functions/sitemap.xml.js` fetches `/sitemap.xml` from Render and returns validated XML, including published products. `client/public/_routes.json` limits Function invocations to that endpoint. Keep `functions/` at the Pages project root; the frontend build output remains `client/dist`.
 
 SEO values saved in the admin panel intentionally override these defaults at runtime. Review **Admin → SEO** after deployment if saved page titles or descriptions still use older copy. Account, admin, cart, checkout, orders, and order-tracking routes carry `noindex` headers; robots.txt leaves those paths crawlable so search engines can see the directive.
 
