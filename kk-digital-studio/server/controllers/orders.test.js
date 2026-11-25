@@ -4,9 +4,9 @@ import mongoose from 'mongoose';
 import ActivityLog from '../models/ActivityLog.js';
 import Order from '../models/Order.js';
 import OrderNotification from '../models/OrderNotification.js';
-import { setStatus } from './orders.js';
+import { setStatus, update } from './orders.js';
 
-async function runStatusUpdate({ failOutbox = false } = {}) {
+async function runStatusUpdate({ failOutbox = false, paymentMethod = 'enquiry', paymentStatus = 'Unpaid', nextStatus = 'Confirmed' } = {}) {
   let order;
   let committed = false;
   const session = {
@@ -26,6 +26,8 @@ async function runStatusUpdate({ failOutbox = false } = {}) {
     _id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
     orderNumber: 'KK-ORD-TEST',
     status: 'Pending',
+    paymentMethod,
+    paymentStatus,
     fulfilment: 'delivery',
     history: [],
     async save(options) {
@@ -63,7 +65,7 @@ async function runStatusUpdate({ failOutbox = false } = {}) {
 
   try {
     await setStatus(
-      { params: { id: order._id }, body: { status: 'Confirmed' }, user: { name: 'Admin' } },
+      { params: { id: order._id }, body: { status: nextStatus }, user: { name: 'Admin' } },
       {
         json(value) {
           assert.equal(committed, true);
@@ -101,4 +103,45 @@ test('outbox failure aborts an admin status update without an outside retry', as
   assert.equal(result.activityCount, 0);
   assert.equal(result.response, undefined);
   assert.equal(result.nextError, result.transactionError);
+});
+
+test('an online order cannot be cancelled while its payment is still paid', async () => {
+  const result = await runStatusUpdate({ paymentMethod: 'online', paymentStatus: 'Paid', nextStatus: 'Cancelled' });
+
+  assert.equal(result.order.status, 'Pending');
+  assert.equal(result.order.saved, undefined);
+  assert.equal(result.response, undefined);
+  assert.equal(result.nextError.status, 409);
+  assert.match(result.nextError.message, /Refund this online payment first/);
+});
+
+test('admin updates cannot mark an online order paid without Razorpay verification', async () => {
+  const order = {
+    _id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+    orderNumber: 'KK-ORD-TEST',
+    paymentMethod: 'online',
+    paymentStatus: 'Pending',
+    status: 'Pending',
+    history: [],
+    async save() { this.saved = true; },
+  };
+  const originalFindById = Order.findById;
+  let nextError;
+  let response;
+  Order.findById = () => ({ populate: () => Promise.resolve(order) });
+
+  try {
+    await update(
+      { params: { id: order._id }, body: { paymentStatus: 'Paid' }, user: { name: 'Admin' } },
+      { json(value) { response = value; } },
+      (error) => { nextError = error; }
+    );
+  } finally {
+    Order.findById = originalFindById;
+  }
+
+  assert.equal(order.saved, undefined);
+  assert.equal(response, undefined);
+  assert.equal(nextError.status, 409);
+  assert.match(nextError.message, /verified payment events/);
 });

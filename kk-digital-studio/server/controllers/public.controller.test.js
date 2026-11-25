@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import Order from '../models/Order.js';
+import { env } from '../config/env.js';
 import { createOrder } from './public.js';
 
 const requestKey = '21a9ef47-f0a1-4d3e-80f0-e1cc633c11a9';
@@ -71,4 +72,31 @@ test('checkout rejects a malformed idempotency key before querying orders', asyn
 
   assert.equal(lookups, 0);
   assert.equal(nextError.status, 422);
+});
+
+test('production Razorpay checkout rejects COD and enquiry orders', async () => {
+  const originalFindOne = Order.findOne;
+  const previous = {
+    isProd: env.isProd,
+    paymentProvider: env.paymentProvider,
+  };
+  env.isProd = true;
+  env.paymentProvider = 'razorpay';
+  Order.findOne = async () => null;
+
+  try {
+    for (const paymentMethod of ['cod', 'enquiry']) {
+      let nextError;
+      await createOrder(
+        { body: { checkoutRequestKey: requestKey, paymentMethod } },
+        { status() { return this; }, json() {} },
+        (error) => { nextError = error; }
+      );
+      assert.equal(nextError.status, 422);
+      assert.match(nextError.message, /Online payment is required/);
+    }
+  } finally {
+    Order.findOne = originalFindOne;
+    Object.assign(env, previous);
+  }
 });

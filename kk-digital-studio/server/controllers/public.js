@@ -29,18 +29,26 @@ const hashCheckoutRequestKey = (key) => createHash('sha256').update(key).digest(
 const checkoutOrderResponse = (order) => ({
   orderNumber: order.orderNumber,
   status: order.status,
+  paymentStatus: order.paymentStatus,
   total: order.total,
   subtotal: order.subtotal,
+  discount: order.discount || 0,
   shipping: order.shipping,
   paymentMethod: order.paymentMethod,
   items: order.items,
   createdAt: order.createdAt,
 });
 
+function publicConfig(config, payment) {
+  if (!payment.onlineOnly) return config;
+  return { ...config, commerce: { ...config.commerce, allowCod: false } };
+}
+
 // ---------- content ----------
 export const site = asyncHandler(async (_req, res) => {
   const config = await getConfig();
-  res.json({ config, payment: paymentInfo(), whatsappUrl: whatsappLink(config) });
+  const payment = paymentInfo();
+  res.json({ config: publicConfig(config, payment), payment, whatsappUrl: whatsappLink(config) });
 });
 
 export const home = asyncHandler(async (_req, res) => {
@@ -64,9 +72,10 @@ export const home = asyncHandler(async (_req, res) => {
     Testimonial.find({ published: true }).sort(sorted).limit(8),
   ]);
   const prods = await Product.populate(productsList, { path: 'category', select: 'name slug' });
+  const payment = paymentInfo();
   res.json({
-    config,
-    payment: paymentInfo(),
+    config: publicConfig(config, payment),
+    payment,
     whatsappUrl: whatsappLink(config),
     services: servicesList,
     products: prods.map((p) => p.toPublic()),
@@ -146,6 +155,12 @@ export const createOrder = asyncHandler(async (req, res) => {
   const previousOrder = await Order.findOne({ checkoutRequestHash });
   if (previousOrder) return res.status(201).json(checkoutOrderResponse(previousOrder));
 
+  const requestedPaymentMethod = ['cod', 'online'].includes(body.paymentMethod) ? body.paymentMethod : 'enquiry';
+  const payment = paymentInfo();
+  if (payment.onlineOnly && requestedPaymentMethod !== 'online') {
+    throw new ApiError(422, 'Online payment is required to place an order.');
+  }
+
   const config = await getConfig();
   const contact = validate({ name: { type: 'string', required: true, min: 2, max: 80 }, phone: { type: 'phone', required: true }, email: { type: 'email' } }, body.contact || {});
   const fulfilment = body.fulfilment === 'pickup' ? 'pickup' : 'delivery';
@@ -157,7 +172,14 @@ export const createOrder = asyncHandler(async (req, res) => {
       : addressRules,
     body.address || {}
   );
-  const paymentMethod = body.paymentMethod === 'cod' && config.commerce.allowCod ? 'cod' : 'enquiry';
+  if (requestedPaymentMethod === 'cod' && !config.commerce.allowCod) throw new ApiError(422, 'Cash on delivery is not available');
+  if (requestedPaymentMethod === 'online' && !payment.onlineEnabled) {
+    throw new ApiError(422, 'Online payment is not available yet. Please choose another payment method.');
+  }
+  if (requestedPaymentMethod === 'online' && config.general.currency !== 'INR') {
+    throw new ApiError(422, 'Online checkout currently supports INR orders only.');
+  }
+  const paymentMethod = requestedPaymentMethod;
   const notes = validate({ notes: { type: 'text', max: 1000 } }, { notes: body.notes }).notes || '';
   const whatsappOptIn = validate({ whatsappOptIn: { type: 'boolean', default: false } }, body).whatsappOptIn;
   const items = cartItemsSchema(body.items);
@@ -195,12 +217,14 @@ export const createOrder = asyncHandler(async (req, res) => {
           contact: { ...contact, phoneKey: phoneKey(contact.phone) },
           shippingAddress: address,
           fulfilment,
-          items: priced.lines.map(({ product, variantId, name, size, finish, sku, image, unitPrice, quantity, lineTotal }) => ({ product, variantId, name, size, finish, sku, image, unitPrice, quantity, lineTotal })),
+          items: priced.lines.map(({ product, variantId, name, size, finish, sku, image, unitPrice, compareAtPrice, discount, quantity, lineTotal }) => ({ product, variantId, name, size, finish, sku, image, unitPrice, compareAtPrice, discount, quantity, lineTotal })),
           subtotal: priced.subtotal,
+          discount: priced.discount,
           shipping,
           total: priced.subtotal + shipping,
           currency: config.general.currency,
           paymentMethod,
+          paymentAmount: paymentMethod === 'online' ? priced.subtotal + shipping : undefined,
           whatsappOptIn,
           whatsappOptInAt: whatsappOptIn ? new Date() : null,
           notes,
@@ -237,6 +261,7 @@ const publicOrder = (o) => ({
   fulfilment: o.fulfilment,
   items: o.items,
   subtotal: o.subtotal,
+  discount: o.discount || 0,
   shipping: o.shipping,
   total: o.total,
   createdAt: o.createdAt,

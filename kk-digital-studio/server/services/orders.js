@@ -4,7 +4,7 @@ import { ApiError } from '../utils/helpers.js';
 
 /**
  * Prices a cart from the database (never trusts prices sent by the browser).
- * items: [{ productId, variantId, quantity }]  →  { lines, issues, subtotal }
+ * items: [{ productId, variantId, quantity }]  →  { lines, issues, subtotal, discount }
  */
 export async function priceCart(items) {
   const ids = [...new Set(items.map((i) => String(i.productId)))];
@@ -13,6 +13,7 @@ export async function priceCart(items) {
   const lines = [];
   const issues = [];
   let subtotal = 0;
+  let discount = 0;
 
   items.forEach((item, index) => {
     const product = map.get(String(item.productId));
@@ -40,7 +41,9 @@ export async function priceCart(items) {
       note = 'stock';
     }
     const lineTotal = variant.price * quantity;
+    const lineDiscount = Math.max(0, Number(variant.compareAtPrice || 0) - variant.price) * quantity;
     subtotal += lineTotal;
+    discount += lineDiscount;
     lines.push({
       product: product._id,
       productSlug: product.slug,
@@ -52,13 +55,14 @@ export async function priceCart(items) {
       image: product.images?.[0] || '',
       unitPrice: variant.price,
       compareAtPrice: variant.compareAtPrice,
+      discount: lineDiscount,
       quantity,
       lineTotal,
       stock: variant.stock,
       stockIssue: note === 'stock',
     });
   });
-  return { lines, issues, subtotal };
+  return { lines, issues, subtotal, discount };
 }
 
 export async function shippingFor(subtotal, fulfilment) {

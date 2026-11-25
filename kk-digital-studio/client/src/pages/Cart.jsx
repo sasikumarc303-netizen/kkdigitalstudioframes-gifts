@@ -84,6 +84,7 @@ export default function Cart() {
                 {error && <p className="form-error" role="alert">{error.message}</p>}
                 <dl>
                   <div><dt>Subtotal</dt><dd>{priced ? money(priced.subtotal) : loading ? '…' : '—'}</dd></div>
+                  {priced?.discount > 0 && <div><dt>Product savings (included)</dt><dd>{money(priced.discount)}</dd></div>}
                   <div><dt>Delivery</dt><dd>{priced ? (priced.shipping > 0 ? money(priced.shipping) : 'Free / at pickup') : '—'}</dd></div>
                   <div className="summary__total"><dt>Total</dt><dd>{priced ? money(priced.total) : '—'}</dd></div>
                 </dl>

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { reserveStock, restoreStock } from './orders.js';
+import { priceCart, reserveStock, restoreStock } from './orders.js';
+import Product from '../models/Product.js';
 
 test('stock reservation uses the supplied transaction session', async () => {
   const session = {};
@@ -17,6 +18,38 @@ test('stock reservation uses the supplied transaction session', async () => {
 
   assert.equal(call[2].session, session);
   assert.equal(call[1].$inc['variants.$.stock'], -2);
+});
+
+test('cart pricing calculates compare-at savings from the database variant prices', async () => {
+  const originalFind = Product.find;
+  Product.find = async () => [{
+    _id: 'product-1',
+    slug: 'frame',
+    name: 'Frame',
+    images: [],
+    variants: {
+      id: () => ({
+        _id: 'variant-1',
+        active: true,
+        price: 80,
+        compareAtPrice: 100,
+        stock: 5,
+        size: '8x10',
+        finish: 'Oak',
+        sku: 'FRAME-1',
+      }),
+    },
+  }];
+
+  try {
+    const priced = await priceCart([{ productId: 'product-1', variantId: 'variant-1', quantity: 2 }]);
+    assert.equal(priced.subtotal, 160);
+    assert.equal(priced.discount, 40);
+    assert.equal(priced.lines[0].lineTotal, 160);
+    assert.equal(priced.lines[0].discount, 40);
+  } finally {
+    Product.find = originalFind;
+  }
 });
 
 test('a failed transactional reservation aborts instead of compensating outside the transaction', async () => {

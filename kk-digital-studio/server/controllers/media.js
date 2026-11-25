@@ -8,9 +8,62 @@ import { ApiError, asyncHandler, escapeRegex, parsePaging } from '../utils/helpe
 import { validate } from '../middleware/validate.js';
 import { env } from '../config/env.js';
 import { storeUpload, removeStored, findMediaUsage, PRIVATE_UPLOAD_ROOT, resolveStoredPath } from '../services/media.js';
+import { getBackblazeStorage } from '../services/backblaze.js';
 import { replaceMediaReferences } from '../services/mediaReferences.js';
 import { logActivity } from '../services/activity.js';
 import { getConfig, patchConfigPath } from '../services/siteConfig.js';
+
+async function streamStorageResponse(body, res, message) {
+  try {
+    await pipeline(body, res);
+  } catch {
+    if (res.headersSent) {
+      res.destroy();
+      return;
+    }
+    throw new ApiError(502, message);
+  }
+}
+
+function publicPreviewDetails(req) {
+  const key = String(req.query.key || '');
+  if (!/^previews\/[a-f0-9]{32}(?:-poster)?\.(?:webp|mp4|jpg)$/.test(key)) {
+    throw new ApiError(404, 'Media preview not found');
+  }
+  const extension = path.extname(key);
+  return {
+    key,
+    contentType: extension === '.mp4' ? 'video/mp4' : extension === '.jpg' ? 'image/jpeg' : 'image/webp',
+  };
+}
+
+function setPublicPreviewHeaders(res, contentType, contentLength) {
+  res.set({
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    'Content-Type': contentType,
+    'X-Content-Type-Options': 'nosniff',
+  });
+  if (contentLength !== undefined) res.set('Content-Length', String(contentLength));
+}
+
+export const backblazePreviewHead = asyncHandler(async (req, res) => {
+  const { key, contentType } = publicPreviewDetails(req);
+  const result = await getBackblazeStorage().headObject(key);
+  setPublicPreviewHeaders(res, contentType, result.ContentLength);
+  res.status(200).end();
+});
+
+export const backblazePreview = asyncHandler(async (req, res) => {
+  const { key, contentType } = publicPreviewDetails(req);
+  const result = await getBackblazeStorage().getObject(key, req.get('range'));
+  if (!result?.Body) throw new ApiError(404, 'Media preview not found');
+
+  res.status(result.ContentRange ? 206 : 200);
+  setPublicPreviewHeaders(res, contentType, result.ContentLength);
+  if (result.ContentRange) res.set('Content-Range', result.ContentRange);
+  await streamStorageResponse(result.Body, res, 'Media preview could not be streamed');
+});
 
 export const list = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePaging(req.query, { defaultLimit: 30, maxLimit: 100 });
@@ -51,6 +104,21 @@ export const downloadOriginal = asyncHandler(async (req, res, next) => {
     });
   }
 
+  if (media.originalProvider === 'backblaze') {
+    const signedUrl = await getBackblazeStorage().createDownloadUrl(media.originalPublicId, 60);
+    let upstream;
+    try {
+      upstream = await fetch(signedUrl);
+    } catch {
+      throw new ApiError(502, 'The private original could not be retrieved from storage');
+    }
+    if (!upstream.ok || !upstream.body) throw new ApiError(502, 'The private original could not be retrieved from storage');
+    res.attachment(filename);
+    res.set('Content-Type', media.originalMime || media.mime || 'application/octet-stream');
+    await streamStorageResponse(Readable.fromWeb(upstream.body), res, 'The private original could not be streamed');
+    return;
+  }
+
   if (!env.cloudinaryEnabled) throw new ApiError(503, 'Cloudinary is not configured to serve this original');
   const format = path.extname(filename).slice(1);
   const downloadUrl = cloudinary.utils.private_download_url(media.originalPublicId, format, {
@@ -86,8 +154,13 @@ export const upload = asyncHandler(async (req, res) => {
       });
       created.push(media);
     } catch (e) {
-      if (media) await media.deleteOne();
-      if (stored) await removeStored(stored);
+      const cleanup = await Promise.allSettled([
+        ...(media ? [media.deleteOne()] : []),
+        ...(stored ? [removeStored(stored)] : []),
+      ]);
+      if (cleanup.some((result) => result.status === 'rejected')) {
+        console.error('[media] Upload rollback cleanup was incomplete');
+      }
       errors.push({ file: file.originalname, message: e.message });
     }
   }
@@ -117,7 +190,10 @@ export const replace = asyncHandler(async (req, res) => {
   if (!m) throw new ApiError(404, 'Media not found');
   const stored = await storeUpload(file, { folder: m.folder });
   if (stored.type !== m.type) {
-    await removeStored({ ...stored, publicId: stored.publicId });
+    const cleanup = await Promise.allSettled([removeStored(stored)]);
+    if (cleanup.some((result) => result.status === 'rejected')) {
+      console.error('[media] Replacement cleanup was incomplete');
+    }
     throw new ApiError(415, `Replacement must be a ${m.type} file`);
   }
   const oldUrl = m.url;
@@ -135,16 +211,32 @@ export const replace = asyncHandler(async (req, res) => {
   Object.assign(m, stored, preserved, {
     legacyProvider: old.provider,
     legacyPublicId: old.publicId,
+    legacyPosterPublicId: old.posterPublicId,
+    legacyOriginalProvider: old.originalProvider,
+    legacyOriginalPublicId: old.originalPublicId,
+    legacyOriginalPath: old.originalPath,
     legacyType: old.type,
     legacyUrl: oldUrl,
     legacyPoster: oldPoster,
   });
-  await m.save();
+  try {
+    await m.save();
+  } catch (error) {
+    const cleanup = await Promise.allSettled([removeStored(stored)]);
+    if (cleanup.some((result) => result.status === 'rejected')) {
+      console.error('[media] Replacement rollback cleanup was incomplete');
+    }
+    throw error;
+  }
   await replaceMediaReferences(oldUrl, m.url);
   if (oldPoster && stored.poster) await replaceMediaReferences(oldPoster, stored.poster);
   await removeStored(old);
   m.legacyProvider = undefined;
   m.legacyPublicId = '';
+  m.legacyPosterPublicId = '';
+  m.legacyOriginalProvider = undefined;
+  m.legacyOriginalPublicId = '';
+  m.legacyOriginalPath = '';
   m.legacyType = undefined;
   m.legacyUrl = '';
   m.legacyPoster = '';

@@ -51,10 +51,18 @@ async function finishLegacyMigration(media) {
   await removeStored({
     provider: media.legacyProvider,
     publicId: media.legacyPublicId,
+    posterPublicId: media.legacyPosterPublicId,
+    originalProvider: media.legacyOriginalProvider,
+    originalPublicId: media.legacyOriginalPublicId,
+    originalPath: media.legacyOriginalPath,
     type: media.legacyType,
   });
   media.legacyProvider = undefined;
   media.legacyPublicId = '';
+  media.legacyPosterPublicId = '';
+  media.legacyOriginalProvider = undefined;
+  media.legacyOriginalPublicId = '';
+  media.legacyOriginalPath = '';
   media.legacyType = undefined;
   media.legacyUrl = '';
   media.legacyPoster = '';
@@ -89,6 +97,7 @@ async function migrateOne(media) {
     const legacy = {
       provider: media.provider,
       publicId: media.publicId,
+      posterPublicId: media.posterPublicId,
       type: media.type,
       url: media.url,
     };

@@ -8,7 +8,7 @@ import { usePaged } from '../hooks/usePaged.js';
 import { Badge, Chips, EmptyRow, ErrorBox, Loading, Modal, PageHeader, Pager, SearchBox, SelectField, TextArea, useConfirm, useSaveState } from '../components/ui.jsx';
 
 export const ORDER_STATUSES = ['Pending', 'Confirmed', 'Processing', 'Production', 'Ready', 'Shipped', 'Delivered', 'Cancelled'];
-const PAYMENT = ['Unpaid', 'Paid', 'Refunded'];
+const PAYMENT = ['Unpaid', 'Pending', 'Failed', 'Paid', 'Refunded'];
 const STATUS_OPTIONS = ORDER_STATUSES.map((value) => ({ value, label: statusLabel(value) }));
 
 function statusLabel(status) {
@@ -190,20 +190,37 @@ export default function Orders() {
                   <dt>Tracking ID</dt><dd>{open.orderNumber} · <a href="/track-order" target="_blank" rel="noopener noreferrer">Open tracking page</a></dd>
                   {open.fulfilment !== 'pickup' && addr && <><dt>Address</dt><dd>{[addr.line1, addr.line2, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ')}</dd></>}
                   <dt>Payment method</dt><dd>{open.paymentMethod}</dd>
+                  {open.paymentMethod === 'online' && <>
+                    <dt>Razorpay order ID</dt><dd>{open.razorpayOrderId || 'Not created'}</dd>
+                    <dt>Razorpay payment ID</dt><dd>{open.razorpayPaymentId || '—'}</dd>
+                    <dt>Payment amount</dt><dd>{open.paymentAmount != null ? money(open.paymentAmount) : money(open.total)}</dd>
+                    <dt>Payment date</dt><dd>{open.paymentDate ? formatDateTime(open.paymentDate) : '—'}</dd>
+                  </>}
                   <dt>WhatsApp opt-in</dt><dd>{open.whatsappOptIn ? 'Yes' : 'No'}</dd>
                   {open.notes && <><dt>Customer note</dt><dd>{open.notes}</dd></>}
                 </dl>
               </section>
               <section>
                 <h3>Update</h3>
-                <SelectField label="Order status" value={next.status} onChange={(v) => (v === 'Cancelled' ? doCancel() : setNext((n) => ({ ...n, status: v })))} options={locked ? [{ value: 'Cancelled', label: 'Cancelled' }] : STATUS_OPTIONS} disabled={locked} hint={locked ? 'Cancelled orders cannot be reopened' : undefined} />
+                <SelectField label="Order status" value={next.status} onChange={(v) => (v === 'Cancelled' ? doCancel() : setNext((n) => ({ ...n, status: v })))} options={locked ? [{ value: 'Cancelled', label: 'Cancelled' }] : open.paymentMethod === 'online' && open.paymentStatus === 'Paid' ? STATUS_OPTIONS.filter((o) => o.value !== 'Cancelled') : STATUS_OPTIONS} disabled={locked} hint={locked ? 'Cancelled orders cannot be reopened' : open.paymentMethod === 'online' && open.paymentStatus === 'Paid' ? 'Refund this payment in Razorpay before cancelling the order.' : undefined} />
                 {next.status !== open.status && (
                   <>
                     <TextArea label="Internal history note (staff only)" rows={2} value={next.note} onChange={(v) => setNext((n) => ({ ...n, note: v }))} />
                     <TextArea label="Customer-safe tracking update (optional)" rows={2} value={next.customerNote} onChange={(v) => setNext((n) => ({ ...n, customerNote: v }))} />
                   </>
                 )}
-                <SelectField label="Payment status" value={next.paymentStatus} onChange={(v) => setNext((n) => ({ ...n, paymentStatus: v }))} options={PAYMENT} />
+                <SelectField
+                  label="Payment status"
+                  value={next.paymentStatus}
+                  onChange={(v) => setNext((n) => ({ ...n, paymentStatus: v }))}
+                  options={open.paymentMethod === 'online'
+                    ? open.paymentStatus === 'Paid'
+                      ? ['Paid', 'Refunded']
+                      : [open.paymentStatus]
+                    : PAYMENT}
+                  disabled={open.paymentMethod === 'online' && open.paymentStatus !== 'Paid'}
+                  hint={open.paymentMethod === 'online' && open.paymentStatus === 'Paid' ? 'Issue the refund in Razorpay first, then mark it refunded here.' : open.paymentMethod === 'online' ? 'Updated only by verified Razorpay payment events.' : undefined}
+                />
                 <TextArea label="Internal notes" rows={3} value={next.adminNotes} onChange={(v) => setNext((n) => ({ ...n, adminNotes: v }))} hint="Only visible to your team" />
               </section>
             </div>
@@ -212,12 +229,12 @@ export default function Orders() {
               {open.items.map((it, i) => (
                 <li key={i}>
                   <Img src={it.image} alt="" ratio="1/1" width={80} />
-                  <span><b>{it.name}</b><small>{[it.size, it.finish].filter(Boolean).join(' · ')}{it.sku ? ` · ${it.sku}` : ''}</small></span>
+                  <span><b>{it.name}</b><small>{[it.size, it.finish].filter(Boolean).join(' · ')}{it.sku ? ` · ${it.sku}` : ''}{it.discount > 0 ? ` · Saves ${money(it.discount)}` : ''}</small></span>
                   <span>{it.quantity} × {money(it.unitPrice)}</span><strong>{money(it.lineTotal)}</strong>
                 </li>
               ))}
             </ul>
-            <dl className="a-totals"><dt>Subtotal</dt><dd>{money(open.subtotal)}</dd><dt>Shipping</dt><dd>{open.shipping ? money(open.shipping) : 'Free'}</dd><dt>Total</dt><dd>{money(open.total)}</dd></dl>
+            <dl className="a-totals"><dt>Subtotal</dt><dd>{money(open.subtotal)}</dd>{open.discount > 0 && <><dt>Product savings (included)</dt><dd>{money(open.discount)}</dd></>}<dt>Shipping</dt><dd>{open.shipping ? money(open.shipping) : 'Free'}</dd><dt>Total</dt><dd>{money(open.total)}</dd></dl>
             <h3>History</h3>
             <Timeline items={open.history || []} />
             <section className="a-notification-status">
