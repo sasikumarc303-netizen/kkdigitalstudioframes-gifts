@@ -69,8 +69,13 @@ gallery.bulkUpload = asyncHandler(async (req, res) => {
       const doc = await GalleryImage.create({ title: media.title, image: media.url, width: media.width, height: media.height, category, published });
       created.push(doc);
     } catch (e) {
-      if (media) await media.deleteOne();
-      if (stored) await removeStored(stored);
+      const cleanup = await Promise.allSettled([
+        ...(media ? [media.deleteOne()] : []),
+        ...(stored ? [removeStored(stored)] : []),
+      ]);
+      if (cleanup.some((result) => result.status === 'rejected')) {
+        console.error('[media] Gallery upload rollback cleanup was incomplete');
+      }
       errors.push({ file: file.originalname, message: e.message });
     }
   }

@@ -47,6 +47,14 @@ export const env = {
     apiKey: process.env.CLOUDINARY_API_KEY || '',
     apiSecret: process.env.CLOUDINARY_API_SECRET || '',
   },
+  storageProvider: (process.env.STORAGE_PROVIDER || '').trim().toLowerCase(),
+  backblaze: {
+    bucketName: process.env.B2_BUCKET_NAME || '',
+    endpoint: process.env.B2_ENDPOINT || '',
+    region: process.env.B2_REGION || '',
+    keyId: process.env.B2_KEY_ID || '',
+    applicationKey: process.env.B2_APPLICATION_KEY || '',
+  },
   maxImageMB: int(process.env.MAX_IMAGE_MB, 10),
   maxVideoMB: int(process.env.MAX_VIDEO_MB, 100),
   mediaWatermarkText: String(process.env.MEDIA_WATERMARK_TEXT || '')
@@ -75,6 +83,14 @@ export const env = {
     password: process.env.ADMIN_PASSWORD || '',
   },
   paymentProvider: (process.env.PAYMENT_PROVIDER || 'none').toLowerCase(),
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID || '',
+    keySecret: process.env.RAZORPAY_KEY_SECRET || '',
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
+    enabled: bool(process.env.RAZORPAY_ENABLED, false),
+    testMode: bool(process.env.RAZORPAY_TEST_MODE, true),
+    allowTestMode: bool(process.env.RAZORPAY_ALLOW_TEST_MODE, false),
+  },
   // Seed values for contact details (editable later in the admin panel). Never invented.
   seedContact: {
     phone: process.env.BUSINESS_PHONE || '',

@@ -44,7 +44,7 @@ export function MediaPicker({ open, onClose, type = 'image', multiple = false, o
   };
 
   const done = () => { onSelect(picked); setPicked([]); onClose(); };
-  const accept = type === 'video' ? 'video/mp4,video/webm,video/quicktime' : 'image/jpeg,image/png,image/webp,image/gif,image/avif';
+  const accept = type === 'video' ? 'video/mp4,video/webm,video/quicktime' : '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp,image/gif,image/avif';
 
   return (
     <Modal open={open} onClose={onClose} wide title={title || `Choose ${type === 'video' ? 'a video' : multiple ? 'images' : 'an image'}`}
