@@ -9,6 +9,7 @@
     "test:api": "node --test src/services/api.test.js",
     "test:site-fallback": "node --test scripts/site-fallback.test.js",
     "test:sitemap": "node --test scripts/sitemap-function.test.js",
+    "test:product-route": "node --test scripts/product-route.test.js",
     "prepreview": "npm run build",
     "preview": "vite preview"
   },
