@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { money as fmtMoney } from '../services/format.js';
+import { DEFAULT_CONFIG } from '../../../server/services/defaults.js';
+import { loadSiteConfig } from './siteConfig.js';
 
 const SiteContext = createContext(null);
 export const useSite = () => useContext(SiteContext);
@@ -8,14 +10,36 @@ export const useSite = () => useContext(SiteContext);
 const digits = (s) => String(s || '').replace(/\D/g, '');
 
 export function SiteProvider({ children }) {
-  const [state, setState] = useState({ config: null, payment: null, error: null, loading: true });
+  const [state, setState] = useState({
+    config: DEFAULT_CONFIG,
+    payment: null,
+    error: null,
+    loading: true,
+    usingFallback: false,
+  });
+  const activeLoad = useRef(null);
 
   const load = useCallback(() => {
+    if (activeLoad.current) return activeLoad.current;
     setState((s) => ({ ...s, loading: true, error: null }));
-    return api
-      .get('/site')
-      .then(({ config, payment }) => setState({ config, payment, error: null, loading: false }))
-      .catch((error) => setState({ config: null, payment: null, error, loading: false }));
+    const request = loadSiteConfig((options) => api.get('/site', options)).then((result) => {
+      if (result.usingFallback) {
+        setState((current) => ({
+          ...current,
+          payment: null,
+          error: result.error,
+          loading: false,
+          usingFallback: true,
+        }));
+      } else {
+        setState({ ...result, loading: false, usingFallback: false });
+      }
+      return result;
+    }).finally(() => {
+      activeLoad.current = null;
+    });
+    activeLoad.current = request;
+    return request;
   }, []);
 
   useEffect(() => {

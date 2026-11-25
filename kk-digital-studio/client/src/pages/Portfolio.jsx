@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { PageHero, MasonryGallery } from '../components/Sections.jsx';
 import { Btn } from '../components/Buttons.jsx';
-import { ErrorState, Skeleton, EmptyState } from '../components/States.jsx';
+import { Skeleton, EmptyState } from '../components/States.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { api, qs } from '../services/api.js';
 
@@ -27,7 +27,13 @@ export default function Portfolio() {
               ))}
             </div>
           )}
-          {photos.error && <ErrorState error={photos.error} onRetry={photos.reload} />}
+          {photos.error && !photos.data && (
+            <EmptyState
+              title="Portfolio previews are temporarily unavailable"
+              text="The studio’s portfolio features portraits, celebrations and event photography. Contact us to ask about recent examples."
+              action={<Btn to="/contact">Contact us</Btn>}
+            />
+          )}
           {photos.loading && <div className="masonry masonry--skeleton">{[300, 420, 340, 380, 300, 440].map((h, i) => <Skeleton key={i} h={h} />)}</div>}
           {photos.data && items.length === 0 && (
             <EmptyState

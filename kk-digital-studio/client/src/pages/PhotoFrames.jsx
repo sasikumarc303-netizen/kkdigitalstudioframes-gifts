@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { PageHero } from '../components/Sections.jsx';
 import { ProductCard } from '../components/Cards.jsx';
 import { Btn } from '../components/Buttons.jsx';
-import { ErrorState, Skeleton, EmptyState } from '../components/States.jsx';
+import { Skeleton, EmptyState } from '../components/States.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { api, qs } from '../services/api.js';
 
@@ -25,7 +25,13 @@ export default function PhotoFrames() {
               {cats.data.map((c) => <button key={c.id} type="button" role="tab" aria-selected={cat === c.slug} className={`filter ${cat === c.slug ? 'is-active' : ''}`} onClick={() => setCat(c.slug)}>{c.name}</button>)}
             </div>
           )}
-          {products.error && <ErrorState error={products.error} onRetry={products.reload} />}
+          {products.error && !products.data && (
+            <EmptyState
+              title="Frame listings are temporarily unavailable"
+              text="Ask the studio about available frame sizes, finishes and personalized photo gifts."
+              action={<Btn to="/contact">Ask about custom frames</Btn>}
+            />
+          )}
           {products.loading && <div className="grid grid--4"><Skeleton h={340} /><Skeleton h={340} /><Skeleton h={340} /><Skeleton h={340} /></div>}
           {products.data && products.data.length === 0 && <EmptyState title="No products here yet" text="New frames and keepsakes are added regularly." action={<Btn to="/contact">Ask us about custom frames</Btn>} />}
           {products.data && products.data.length > 0 && (

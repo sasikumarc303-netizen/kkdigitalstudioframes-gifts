@@ -19,7 +19,7 @@ function ScrollToTop() {
 }
 
 function Shell() {
-  const { config, loading, error, reload } = useSite();
+  const { config, usingFallback, reload } = useSite();
   const { pathname } = useLocation();
   const outlet = useOutlet();
   const reduce = useReducedMotion();
@@ -39,23 +39,20 @@ function Shell() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  if (loading && !config) return <div className="splash" role="status" aria-label="Loading"><img className="splash__logo" src="/images/kk-digital-studio-brand-logo.png" alt="KK Digital Studio" width="180" height="60" /></div>;
-  if (error || !config) {
-    return (
-      <div className="splash splash--error">
-        <h1>We’ll be right back</h1>
-        <p>{error?.message || 'The website could not be loaded.'}</p>
-        <Btn onClick={reload}>Try again</Btn>
-      </div>
-    );
-  }
-
   return (
     <>
       <a className="skip-link" href="#main">Skip to content</a>
       <ScrollToTop />
       <Seo />
       <Header />
+      {usingFallback && (
+        <div className="container" role="status">
+          <p className="muted small">
+            Live site settings could not be refreshed. Showing the last available studio information; online actions still require a live connection.
+            {' '}<Btn size="sm" variant="ghost" onClick={reload}>Retry</Btn>
+          </p>
+        </div>
+      )}
       <AnimatePresence mode="wait" initial={false}>
         <motion.main
           id="main"

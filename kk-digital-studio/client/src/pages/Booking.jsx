@@ -5,7 +5,7 @@ import Icon from '../components/Icon.jsx';
 import Reveal from '../components/Reveal.jsx';
 import { Btn } from '../components/Buttons.jsx';
 import { Field } from '../components/Form.jsx';
-import { ErrorState, Spinner } from '../components/States.jsx';
+import { Spinner } from '../components/States.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { useSite } from '../context/SiteContext.jsx';
 import { api } from '../services/api.js';
@@ -97,8 +97,8 @@ export default function Booking() {
               </div>
               <Field label="Email" error={errors.email} hint="Optional, for confirmation emails"><input type="email" value={form.email} onChange={set('email')} autoComplete="email" /></Field>
               <Field label="Photography service" error={errors.serviceId} required>
-                <select value={form.serviceId} onChange={set('serviceId')} disabled={services.loading}>
-                  <option value="">{services.loading ? 'Loading services…' : 'Choose a service'}</option>
+                <select value={form.serviceId} onChange={set('serviceId')} disabled={services.loading || !services.data}>
+                  <option value="">{services.loading ? 'Loading services…' : services.error ? 'Service list unavailable' : 'Choose a service'}</option>
                   {(services.data || []).map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
                 </select>
               </Field>
@@ -121,7 +121,12 @@ export default function Booking() {
 
           <Reveal className="booking__side" delay={0.1}>
             <ManageBooking />
-            {services.error && <ErrorState error={services.error} onRetry={services.reload} />}
+            {services.error && (
+              <p className="muted small" role="status">
+                Service choices could not be loaded. Booking requests still require server confirmation.
+                {' '}<Btn size="sm" variant="ghost" onClick={services.reload}>Retry services</Btn>
+              </p>
+            )}
           </Reveal>
         </div>
       </section>

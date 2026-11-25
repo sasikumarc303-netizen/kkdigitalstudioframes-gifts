@@ -163,13 +163,25 @@ function renderPage(pathname, { title, description }) {
 
 const titles = Object.values(SEO_PAGES).map((page) => page.title);
 const descriptions = Object.values(SEO_PAGES).map((page) => page.description);
+const expectedRoutes = [
+  '/',
+  '/about',
+  '/services',
+  '/portfolio',
+  '/packages',
+  '/photo-frames',
+  '/booking',
+  '/contact',
+];
 if (
   new Set(titles).size !== titles.length ||
-  new Set(descriptions).size !== descriptions.length
+  new Set(descriptions).size !== descriptions.length ||
+  JSON.stringify(Object.keys(SEO_PAGES)) !== JSON.stringify(expectedRoutes)
 ) {
-  throw new Error('Public SEO routes must have unique titles and descriptions.');
+  throw new Error('The eight public SEO routes must have unique titles and descriptions.');
 }
 
+const h1Texts = new Set();
 for (const [pathname, metadata] of Object.entries(SEO_PAGES)) {
   const outputPath = pathname === '/'
     ? path.join(distDir, 'index.html')
@@ -178,14 +190,33 @@ for (const [pathname, metadata] of Object.entries(SEO_PAGES)) {
   await writeFile(outputPath, renderPage(pathname, metadata), 'utf8');
 }
 
-for (const [pathname, { title }] of Object.entries(SEO_PAGES)) {
+for (const [pathname, metadata] of Object.entries(SEO_PAGES)) {
+  const { title } = metadata;
   const outputPath = pathname === '/'
     ? path.join(distDir, 'index.html')
     : path.join(distDir, pathname.slice(1), 'index.html');
   const html = await readFile(outputPath, 'utf8');
-  if (!html.includes(`<h1`) || !html.includes(`</h1>`) || !html.includes(`id="main"`) || !html.includes(escapeHtml(title))) {
+  const h1Text = html.match(/<h1(?:\s[^>]*)?>([\s\S]*?)<\/h1>/i)?.[1]
+    ?.replace(/<[^>]+>/g, '')
+    .trim();
+  const fallbackText = renderPublicFallback(pathname)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const descriptionMeta = `<meta name="description" content="${escapeHtml(metadata.description)}" />`;
+  const canonicalLink = `<link rel="canonical" href="${SEO_ORIGIN}${pathname === '/' ? '/' : pathname}" />`;
+  if (
+    !h1Text ||
+    h1Texts.has(h1Text) ||
+    fallbackText.length < 120 ||
+    !html.includes('id="main"') ||
+    !html.includes(`<title>${escapeHtml(title)}</title>`) ||
+    !html.includes(descriptionMeta) ||
+    !html.includes(canonicalLink)
+  ) {
     throw new Error(`Generated route ${pathname} is missing meaningful public HTML or metadata.`);
   }
+  h1Texts.add(h1Text);
   if (/<meta\s+name=["']robots["'][^>]*noindex/i.test(html)) {
     throw new Error(`Public route ${pathname} must remain indexable.`);
   }
@@ -244,13 +275,31 @@ for (const requiredHeader of [
 const redirects = (await readFile(path.join(distDir, '_redirects'), 'utf8'))
   .split(/\r?\n/)
   .map((line) => line.trim())
-  .filter((line) => line && !line.startsWith('#'));
+  .filter((line) => line && !line.startsWith('#'))
+  .map((line) => line.replace(/\s+/g, ' '));
+const requiredSpaRoutes = [
+  '/admin /index.html 200',
+  '/admin/* /index.html 200',
+  '/cart /index.html 200',
+  '/checkout /index.html 200',
+  '/orders /index.html 200',
+  '/track-order /index.html 200',
+  '/photo-frames/* /index.html 200',
+];
 if (
-  !redirects[0]?.startsWith('/api/* ') ||
+  redirects[0] !== '/api/* https://kk-digital-studio-backend.onrender.com/api/:splat 200' ||
+  requiredSpaRoutes.some((route) => !redirects.includes(route)) ||
   redirects.some((line) => line.startsWith('/sitemap.xml ')) ||
-  redirects.at(-1) !== '/*  /index.html  200'
+  redirects.some((line) => line.startsWith('/* /index.html'))
 ) {
-  throw new Error('The sitemap must bypass _redirects and the SPA fallback must remain last.');
+  throw new Error('The sitemap must bypass redirects, and only known SPA routes may rewrite to index.html.');
+}
+const notFoundHtml = await readFile(path.join(distDir, '404.html'), 'utf8');
+if (
+  !notFoundHtml.includes('<meta name="robots" content="noindex, nofollow" />') ||
+  !notFoundHtml.includes('<h1>This page has wandered out of frame</h1>')
+) {
+  throw new Error('Cloudflare Pages must include a noindex custom 404 page.');
 }
 for (const functionPath of [
   path.join(projectDir, 'functions', 'sitemap.xml.js'),
