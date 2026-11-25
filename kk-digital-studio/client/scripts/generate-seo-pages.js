@@ -238,6 +238,15 @@ for (const [pathname, metadata] of Object.entries(SEO_PAGES)) {
     throw new Error(`Generated route ${pathname} has incomplete LocalBusiness data.`);
   }
 }
+for (const functionPath of [
+  path.join(projectDir, 'functions', 'photo-frames', '[id].js'),
+  path.join(clientDir, 'functions', 'photo-frames', '[id].js'),
+]) {
+  const productFunction = await readFile(functionPath, 'utf8');
+  if (!productFunction.includes('handleProductRoute')) {
+    throw new Error(`The Cloudflare Pages product Function entrypoint is missing: ${functionPath}`);
+  }
+}
 
 const robots = await readFile(path.join(distDir, 'robots.txt'), 'utf8');
 for (const requiredDirective of [
@@ -313,10 +322,10 @@ for (const functionPath of [
 const functionRoutes = JSON.parse(await readFile(path.join(distDir, '_routes.json'), 'utf8'));
 if (
   functionRoutes.version !== 1 ||
-  JSON.stringify(functionRoutes.include) !== JSON.stringify(['/sitemap.xml']) ||
+  JSON.stringify(functionRoutes.include) !== JSON.stringify(['/sitemap.xml', '/photo-frames/*']) ||
   functionRoutes.exclude.length !== 0
 ) {
-  throw new Error('Cloudflare Pages Functions must only be invoked for /sitemap.xml.');
+  throw new Error('Cloudflare Pages Functions must only be invoked for the sitemap and dynamic product routes.');
 }
 try {
   await access(path.join(distDir, 'sitemap.xml'));
