@@ -1,7 +1,12 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SEO_ORIGIN, SEO_PAGES, SITE_DESCRIPTION } from '../../seo.mjs';
+import {
+  createLocalBusinessJsonLd,
+  SEO_ORIGIN,
+  SEO_PAGES,
+  SITE_DESCRIPTION,
+} from '../../seo.mjs';
 import { DEFAULT_CONFIG } from '../../server/services/defaults.js';
 import { PACKAGE_SEEDS, SERVICE_SEEDS } from '../../public-content.mjs';
 
@@ -125,13 +130,11 @@ function renderPage(pathname, { title, description }) {
         name: DEFAULT_CONFIG.general.businessName,
         url: `${SEO_ORIGIN}/`,
       },
-      {
-        '@type': 'LocalBusiness',
+      createLocalBusinessJsonLd({
         name: DEFAULT_CONFIG.general.businessName,
-        url: `${SEO_ORIGIN}/`,
-        address: DEFAULT_CONFIG.contact.address,
-        hasMap: DEFAULT_CONFIG.contact.mapUrl,
-      },
+        phone: DEFAULT_CONFIG.contact.phone,
+        mapUrl: DEFAULT_CONFIG.contact.mapUrl,
+      }),
     ],
   };
   const head = [
@@ -157,6 +160,15 @@ function renderPage(pathname, { title, description }) {
   return html;
 }
 
+const titles = Object.values(SEO_PAGES).map((page) => page.title);
+const descriptions = Object.values(SEO_PAGES).map((page) => page.description);
+if (
+  new Set(titles).size !== titles.length ||
+  new Set(descriptions).size !== descriptions.length
+) {
+  throw new Error('Public SEO routes must have unique titles and descriptions.');
+}
+
 for (const [pathname, metadata] of Object.entries(SEO_PAGES)) {
   const outputPath = pathname === '/'
     ? path.join(distDir, 'index.html')
@@ -173,37 +185,56 @@ for (const [pathname, { title }] of Object.entries(SEO_PAGES)) {
   if (!html.includes(`<h1`) || !html.includes(`</h1>`) || !html.includes(`id="main"`) || !html.includes(escapeHtml(title))) {
     throw new Error(`Generated route ${pathname} is missing meaningful public HTML or metadata.`);
   }
-}
-
-const sitemap = await readFile(path.join(distDir, 'sitemap.xml'), 'utf8');
-const sitemapLocations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]);
-const expectedLocations = Object.keys(SEO_PAGES).map((pathname) =>
-  `${SEO_ORIGIN}${pathname === '/' ? '/' : pathname}`
-);
-if (
-  !sitemap.startsWith('<?xml version="1.0" encoding="UTF-8"?>') ||
-  !sitemap.includes('<urlset ') ||
-  new Set(sitemapLocations).size !== sitemapLocations.length ||
-  sitemapLocations.length !== expectedLocations.length ||
-  expectedLocations.some((location) => !sitemapLocations.includes(location)) ||
-  sitemapLocations.some((location) => !location.startsWith(`${SEO_ORIGIN}/`))
-) {
-  throw new Error('The static sitemap is invalid, contains duplicate URLs, or does not match the public route list.');
+  const structuredDataMatch = html.match(/<script id="kk-structured-data" type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  if (!structuredDataMatch) {
+    throw new Error(`Generated route ${pathname} is missing its structured data.`);
+  }
+  const structuredData = JSON.parse(structuredDataMatch[1]);
+  const localBusiness = structuredData['@graph']?.find((entry) => entry['@type'] === 'LocalBusiness');
+  const expectedCanonical = `${SEO_ORIGIN}${pathname === '/' ? '/' : pathname}`;
+  if (
+    !html.includes(`<link rel="canonical" href="${expectedCanonical}" />`) ||
+    !localBusiness ||
+    localBusiness.address?.['@type'] !== 'PostalAddress' ||
+    localBusiness.address?.addressLocality !== 'Tirupattur' ||
+    localBusiness.address?.postalCode !== '635651' ||
+    localBusiness.telephone !== DEFAULT_CONFIG.contact.phone
+  ) {
+    throw new Error(`Generated route ${pathname} has incomplete LocalBusiness data.`);
+  }
 }
 
 const robots = await readFile(path.join(distDir, 'robots.txt'), 'utf8');
-if (!robots.includes(`Sitemap: ${SEO_ORIGIN}/sitemap.xml`)) {
-  throw new Error('robots.txt is missing the production sitemap URL.');
+for (const requiredDirective of [
+  `Sitemap: ${SEO_ORIGIN}/sitemap.xml`,
+  'Disallow: /api/',
+]) {
+  if (!robots.includes(requiredDirective)) {
+    throw new Error(`robots.txt is missing the expected directive: ${requiredDirective}`);
+  }
+}
+if (['/admin', '/account', '/cart', '/checkout', '/orders', '/track-order'].some((route) =>
+  robots.includes(`Disallow: ${route}`)
+)) {
+  throw new Error('robots.txt must allow crawlers to see noindex responses for private routes.');
 }
 
 const headers = (await readFile(path.join(distDir, '_headers'), 'utf8')).replace(/\r\n/g, '\n');
 for (const requiredHeader of [
   '/sitemap.xml\n  Content-Type: application/xml; charset=utf-8',
   '/robots.txt\n  Content-Type: text/plain; charset=utf-8',
+  '/admin\n  X-Robots-Tag: noindex, nofollow',
   '/admin/*\n  X-Robots-Tag: noindex, nofollow',
+  '/cart\n  X-Robots-Tag: noindex, nofollow',
+  '/checkout\n  X-Robots-Tag: noindex, nofollow',
+  '/orders\n  X-Robots-Tag: noindex, nofollow',
+  '/account\n  X-Robots-Tag: noindex, nofollow',
+  '/account/*\n  X-Robots-Tag: noindex, nofollow',
+  '/track-order\n  X-Robots-Tag: noindex, nofollow',
+  '/track-order/*\n  X-Robots-Tag: noindex, nofollow',
 ]) {
   if (!headers.includes(requiredHeader)) {
-    throw new Error(`Netlify _headers is missing the expected rule: ${requiredHeader.split('\n')[0]}`);
+    throw new Error(`Cloudflare Pages _headers is missing the expected rule: ${requiredHeader.split('\n')[0]}`);
   }
 }
 
@@ -211,8 +242,18 @@ const redirects = (await readFile(path.join(distDir, '_redirects'), 'utf8'))
   .split(/\r?\n/)
   .map((line) => line.trim())
   .filter((line) => line && !line.startsWith('#'));
-if (!redirects[0]?.startsWith('/api/* ') || redirects.at(-1) !== '/*  /index.html  200') {
-  throw new Error('Netlify redirects must keep the API proxy first and the SPA fallback last.');
+if (
+  !redirects[0]?.startsWith('/api/* ') ||
+  redirects[1] !== '/sitemap.xml  https://kk-digital-studio-backend.onrender.com/sitemap.xml  200' ||
+  redirects.at(-1) !== '/*  /index.html  200'
+) {
+  throw new Error('Cloudflare Pages redirects must proxy the sitemap and keep the SPA fallback last.');
+}
+try {
+  await access(path.join(distDir, 'sitemap.xml'));
+  throw new Error('A static sitemap would shadow the Cloudflare Pages sitemap proxy.');
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
 }
 
 console.log(`Generated static SEO metadata for ${Object.keys(SEO_PAGES).length} public routes.`);

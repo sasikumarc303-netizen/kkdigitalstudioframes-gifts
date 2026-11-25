@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useSite } from '../context/SiteContext.jsx';
-import { SEO_ORIGIN } from '../../../seo.mjs';
+import { SEO_ORIGIN, SEO_PAGES } from '../../../seo.mjs';
 
 function setMeta(selector, attrs) {
   let el = document.head.querySelector(selector);
@@ -15,41 +15,6 @@ function setMeta(selector, attrs) {
 
 const abs = (u) => (!u ? '' : /^https?:/i.test(u) ? u : `${window.location.origin}${u.startsWith('/') ? '' : '/'}${u}`);
 
-const PAGE_FALLBACKS = {
-  '/': {
-    title: '{brand} | Photography, Custom Gifts & Photo Frames',
-    description: 'KK Digital Studio Frames & Gifts offers photography, customized gifts and photo frames in Achamangalam, Tirupathur, Tamil Nadu 635651, India.',
-  },
-  '/about': {
-    title: 'About {brand} | Photography Studio in Tirupathur',
-    description: 'Learn about KK Digital Studio Frames & Gifts in Achamangalam, Tirupathur, and our personal approach to photography.',
-  },
-  '/services': {
-    title: 'Photography Services | {brand}',
-    description: 'From milestone celebrations to everyday portraits, printing and framing, explore the photography services offered by KK Digital Studio.',
-  },
-  '/portfolio': {
-    title: 'Photography Portfolio | {brand}',
-    description: 'Explore selected photography work and stories captured by KK Digital Studio.',
-  },
-  '/packages': {
-    title: 'Photography Packages | {brand}',
-    description: 'Explore photography package options and contact KK Digital Studio to tailor a session to your occasion, people and budget.',
-  },
-  '/photo-frames': {
-    title: 'Photo Frames & Keepsakes | {brand}',
-    description: 'Explore photo frame sizes and finishes, or ask KK Digital Studio to print and frame your photograph.',
-  },
-  '/booking': {
-    title: 'Book a Photography Session | {brand}',
-    description: 'Share your details and preferred date to request a photography session with KK Digital Studio.',
-  },
-  '/contact': {
-    title: 'Contact {brand} | Tirupathur',
-    description: 'Visit KK Digital Studio Frames & Gifts in Achamangalam, Tirupathur, Tamil Nadu 635651, India, or contact us about a session, print or frame.',
-  },
-};
-
 /**
  * Per-page SEO. Values come from the admin panel (Settings → SEO) keyed by route, and can be overridden by props
  * (used for product pages). The server also injects the same tags into the HTML for crawlers.
@@ -59,12 +24,13 @@ export default function Seo({ title, description, image, noindex = false }) {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const page = config?.seo?.pages?.[pathname] || {};
+    const canonicalPath = pathname.replace(/\/+$/, '') || '/';
+    const page = config?.seo?.pages?.[canonicalPath] || {};
     const brand = config?.general?.businessName || 'KK Digital Studio Frames & Gifts';
-    const fallback = PAGE_FALLBACKS[pathname];
-    const t = title || page.title || fallback?.title.replace('{brand}', brand) || brand;
+    const fallback = SEO_PAGES[canonicalPath];
+    const t = title || page.title || fallback?.title || brand;
     const d = description || page.description || fallback?.description || '';
-    const canonical = `${SEO_ORIGIN}${pathname}`;
+    const canonical = `${SEO_ORIGIN}${canonicalPath}`;
     const img = abs(image || page.ogImage || config?.seo?.defaultOgImage);
     document.title = t;
     setMeta('meta[name="description"]', { name: 'description', content: d });

@@ -87,7 +87,7 @@ Useful commands:
 | `npm run seed:demo` | Same, plus **clearly sample** prices and stock on the frame products so you can try the shop. Replace them in the admin before going live |
 | `npm run create-admin` | Creates (or resets the password of) an admin account from `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
 | `npm --prefix server run migrate:media` | One-time conversion of existing uploads to private originals and watermarked previews; back up first |
-| `npm run build` | Builds the React app into `client/dist` |
+| `npm run build` | Builds the React app and prerenders crawlable SEO HTML for public routes into `client/dist` |
 | `npm start` | Starts the production server (serves the API **and** the built website on one port) |
 | `npm --prefix server run check` | Prints storage/SMTP status and document counts |
 
@@ -120,6 +120,7 @@ Copy `.env.example` to `.env` (project root or `server/`). Every variable is doc
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Server-side Razorpay API credentials; never use `VITE_` variables |
 | `RAZORPAY_WEBHOOK_SECRET` | Server-side signing secret configured for the Razorpay webhook |
 | `VITE_API_URL` | Frontend API origin (for example, `https://kk-digital-studio-backend.onrender.com`); set in Cloudflare Pages build variables, without `/api` |
+| `VITE_ARATTAI_CHAT_URL` | Optional public HTTPS Arattai URL override. Defaults to the Arattai app download page; this is not a direct chat URL |
 
 ---
 
@@ -170,6 +171,12 @@ Role defaults (adjustable per user): **superadmin** everything · **admin** ever
 There is no hardcoded manageable content: services, packages, products, gallery, testimonials, contact details, navigation, homepage copy, hero media and SEO are stored in MongoDB and read through the public API (`/api/site`, `/api/home`, …). Saving in the admin writes to the database; the website reads it on the next load.
 
 Built-in defaults (`server/services/defaults.js`) are only a starting point, merged underneath whatever you save. Sections with no data (portfolio without photos, testimonials without published items) are hidden instead of showing fake content.
+
+## Local SEO and indexing
+
+The shared SEO defaults in `seo.mjs` provide unique titles and descriptions for public routes. `npm run build` generates static HTML for those routes, including structured LocalBusiness data, so crawlers can read useful content before running JavaScript. Cloudflare Pages proxies `/sitemap.xml` to the Render sitemap endpoint, which lists the public routes and published products. The build validates the sitemap route, robots file, and noindex headers.
+
+SEO values saved in the admin panel intentionally override these defaults at runtime. Review **Admin → SEO** after deployment if saved page titles or descriptions still use older copy. Account, admin, cart, checkout, orders, and order-tracking routes carry `noindex` headers; robots.txt leaves those paths crawlable so search engines can see the directive.
 
 ---
 
@@ -261,6 +268,7 @@ Then add a certificate with Let’s Encrypt (`certbot --nginx`). `TRUST_PROXY` a
 
 ### Cloudflare Pages frontend with a separate Render API
 - Set the Cloudflare Pages build variable `VITE_API_URL` to `https://kk-digital-studio-backend.onrender.com` (the origin only; do not append `/api`). The shared API client adds `/api` and uses this base for public requests, admin requests, and uploads. The Render origin is the fallback if the variable is omitted.
+- The Arattai floating button opens `https://chat.arattai.in/app/download` in a new tab by default; this is the app download page, not a direct chat. Set `VITE_ARATTAI_CHAT_URL` in the Cloudflare Pages build environment to override it with a verified HTTPS Arattai link. The button also displays and can copy the studio number. This is a public frontend URL, not a secret.
 - On Render, keep `COOKIE_SECURE=true` and `TRUST_PROXY=true`. The API allows the Cloudflare Pages origin and both `https://kkdigitalstudioframes.com` and `https://www.kkdigitalstudioframes.com`. Keep `CLIENT_URL` for any additional origins (such as localhost during development), as comma-separated entries.
 - Admin sessions use `SameSite=None; Secure` cookies for this cross-site setup. The cookie remains HTTP-only; exact-origin credentialed CORS and the existing CSRF header remain enabled. Browser privacy settings that block third-party cookies can still prevent cross-site admin sessions; using a custom frontend domain on the same site as the API is the most reliable option.
 - The existing `client/public/_redirects` SPA fallback serves `/index.html` for deep links such as `/admin` and `/photo-frames/example`.
