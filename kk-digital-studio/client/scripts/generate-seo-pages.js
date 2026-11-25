@@ -186,6 +186,9 @@ for (const [pathname, { title }] of Object.entries(SEO_PAGES)) {
   if (!html.includes(`<h1`) || !html.includes(`</h1>`) || !html.includes(`id="main"`) || !html.includes(escapeHtml(title))) {
     throw new Error(`Generated route ${pathname} is missing meaningful public HTML or metadata.`);
   }
+  if (/<meta\s+name=["']robots["'][^>]*noindex/i.test(html)) {
+    throw new Error(`Public route ${pathname} must remain indexable.`);
+  }
   const structuredDataMatch = html.match(/<script id="kk-structured-data" type="application\/ld\+json">([\s\S]*?)<\/script>/);
   if (!structuredDataMatch) {
     throw new Error(`Generated route ${pathname} is missing its structured data.`);
@@ -249,13 +252,14 @@ if (
 ) {
   throw new Error('The sitemap must bypass _redirects and the SPA fallback must remain last.');
 }
-const sitemapFunction = await readFile(path.join(projectDir, 'functions', 'sitemap.xml.js'), 'utf8');
-if (
-  !sitemapFunction.includes('export async function onRequestGet') ||
-  !sitemapFunction.includes('application/xml; charset=utf-8') ||
-  !sitemapFunction.includes('text/plain; charset=utf-8')
-) {
-  throw new Error('The Cloudflare Pages sitemap Function is missing or does not define safe response types.');
+for (const functionPath of [
+  path.join(projectDir, 'functions', 'sitemap.xml.js'),
+  path.join(clientDir, 'functions', 'sitemap.xml.js'),
+]) {
+  const sitemapFunction = await readFile(functionPath, 'utf8');
+  if (!sitemapFunction.includes('handleSitemap')) {
+    throw new Error(`The Cloudflare Pages sitemap Function entrypoint is missing: ${functionPath}`);
+  }
 }
 const functionRoutes = JSON.parse(await readFile(path.join(distDir, '_routes.json'), 'utf8'));
 if (
