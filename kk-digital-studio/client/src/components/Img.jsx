@@ -32,6 +32,7 @@ export default function Img({ src, alt = '', ratio, width, sizes, priority = fal
           sizes={srcSet ? sizes || '(max-width: 767px) 100vw, 50vw' : undefined}
           alt={alt}
           loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : undefined}
           decoding="async"
           onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}

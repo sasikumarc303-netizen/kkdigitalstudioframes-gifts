@@ -18,3 +18,15 @@
 
 /orders
   X-Robots-Tag: noindex, nofollow
+
+/account
+  X-Robots-Tag: noindex, nofollow
+
+/account/*
+  X-Robots-Tag: noindex, nofollow
+
+/track-order
+  X-Robots-Tag: noindex, nofollow
+
+/track-order/*
+  X-Robots-Tag: noindex, nofollow

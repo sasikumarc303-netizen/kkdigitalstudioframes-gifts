@@ -20,7 +20,7 @@ import { DEFAULT_CONFIG } from './services/defaults.js';
 import * as payments from './controllers/payments.js';
 import Product from './models/Product.js';
 import AdminUser from './models/AdminUser.js';
-import { SEO_ORIGIN } from '../seo.mjs';
+import { createLocalBusinessJsonLd, SEO_ORIGIN } from '../seo.mjs';
 
 const app = express();
 app.disable('x-powered-by');
@@ -98,25 +98,21 @@ if (fs.existsSync(indexFile)) {
     }
     page = page || { title: `${cfg.general.businessName} | ${cfg.general.tagline}`, description: cfg.general.tagline, ogImage: '' };
     const og = abs(page.ogImage || cfg.seo.defaultOgImage);
-    const noindex = pathname.startsWith('/admin') || ['/cart', '/checkout', '/orders'].includes(pathname);
-    const ld = {
-      '@context': 'https://schema.org',
-      '@type': 'LocalBusiness',
+    const noindex = pathname.startsWith('/admin') || ['/account', '/cart', '/checkout', '/orders', '/track-order'].includes(pathname);
+    const ld = createLocalBusinessJsonLd({
       name: cfg.general.businessName,
-      url: SEO_ORIGIN,
-      description: cfg.general.tagline,
-      logo: abs(cfg.general.logo || '/images/kk-digital-logo.jpg'),
-      address: cfg.contact.address,
-      hasMap: cfg.contact.mapUrl,
-      ...(cfg.contact.phone ? { telephone: cfg.contact.phone } : {}),
-      ...(og ? { image: og } : {}),
+      description: cfg.seo.pages['/']?.description || cfg.general.tagline,
+      logo: abs(cfg.general.logo),
+      mapUrl: cfg.contact.mapUrl,
+      phone: cfg.contact.phone,
+      image: og,
       sameAs: Object.values(cfg.contact.social).filter(Boolean),
-    };
+    });
     const head = [
       `<title>${esc(page.title)}</title>`,
       `<meta name="description" content="${esc(page.description)}" />`,
       noindex ? '<meta name="robots" content="noindex,nofollow" />' : '',
-      `<link rel="canonical" href="${esc(SEO_ORIGIN + pathname)}" />`,
+      `<link rel="canonical" href="${esc(SEO_ORIGIN + (pathname.replace(/\/+$/, '') || '/'))}" />`,
       `<meta property="og:type" content="website" />`,
       `<meta property="og:site_name" content="${esc(cfg.general.businessName)}" />`,
       `<meta property="og:title" content="${esc(page.title)}" />`,

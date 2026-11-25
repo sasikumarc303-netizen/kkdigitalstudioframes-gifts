@@ -1,2 +1,3 @@
 /api/*  https://kk-digital-studio-backend.onrender.com/api/:splat  200
+/sitemap.xml  https://kk-digital-studio-backend.onrender.com/sitemap.xml  200
 /*  /index.html  200

@@ -1,5 +1,10 @@
 // Default site content & settings. Stored values (edited in the admin panel) are merged over these.
 // Nothing here is a made-up business fact: no phone numbers, prices, reviews or opening hours are invented.
+import { SEO_PAGES } from '../../seo.mjs';
+
+const DEFAULT_SEO_PAGES = Object.fromEntries(
+  Object.entries(SEO_PAGES).map(([route, page]) => [route, { ...page, ogImage: '' }])
+);
 
 export const DEFAULT_CONFIG = {
   general: {
@@ -7,7 +12,7 @@ export const DEFAULT_CONFIG = {
     tagline: 'Professional Photography Studio',
     logo: '',
     favicon: '',
-    footerText: 'Professional photography, photo printing and framing from Achamangalam, Tirupathur.',
+    footerText: 'Professional photography, photo printing and framing from Achamangalam, Tirupattur.',
     currency: 'INR',
     currencySymbol: '₹',
   },
@@ -15,7 +20,7 @@ export const DEFAULT_CONFIG = {
     phone: '+91 97888 89966',
     whatsapp: '',
     email: 'kkdigital85@gmail.com',
-    address: 'Achamangalam, Tirupathur, Tamil Nadu 635651, India',
+    address: 'Achamangalam, Tirupattur, Tamil Nadu 635651, India',
     mapQuery: '',
     mapUrl: 'https://maps.app.goo.gl/yJQow79hUqVUjyZW7?g_st=aw',
     mapEmbedUrl: 'https://www.google.com/maps/embed?origin=mfe&pb=!6m8!1m7!1sHsYmabhV_o87eZEWGLsahw!2m2!1d12.5209761!2d78.5493927!3f45.05!4f-0!5f8',
@@ -43,8 +48,8 @@ export const DEFAULT_CONFIG = {
   ],
   homepage: {
     hero: {
-      eyebrow: 'KK Digital Studio Frames & Gifts · Tirupathur',
-      heading: 'WE CAPTURE YOUR MOMENTS.',
+      eyebrow: 'KK Digital Studio Frames & Gifts · Tirupattur',
+      heading: 'Photo Studio in Tirupattur for Moments Worth Keeping',
       subheading: 'Every photograph tells a story. Let us preserve yours forever.',
       video: '/videos/hero.mp4',
       videoMobile: '/videos/hero-mobile.mp4',
@@ -60,8 +65,8 @@ export const DEFAULT_CONFIG = {
       intro: {
         visible: true,
         eyebrow: 'Welcome to the studio',
-        title: 'Where every frame is composed with care',
-        text: 'KK Digital Studio Frames & Gifts is a photography studio in Achamangalam, Tirupathur. From weddings and portraits to passport photos, prints and handcrafted frames, we turn your moments into images you will want to keep for a lifetime.',
+        title: 'Photography, Prints & Frames in Tirupattur',
+        text: 'KK Digital Studio Frames & Gifts is a photo studio in Achamangalam, Tirupattur. We photograph portraits, weddings and events, and offer prints, handcrafted frames and customized gifts.',
         image: '/images/studio-camera-warm.jpg',
       },
       about: {
@@ -112,14 +117,7 @@ export const DEFAULT_CONFIG = {
     defaultOgImage: '/images/hero-poster.jpg',
     robotsTxt: '',
     pages: {
-      '/': { title: 'KK Digital Studio Frames & Gifts | Photography Studio in Tirupathur', description: 'Professional photography, photo printing and framing in Achamangalam, Tirupathur, Tamil Nadu 635651, India. Book your session today.', ogImage: '' },
-      '/about': { title: 'About | KK Digital Studio Frames & Gifts', description: 'Meet KK Digital Studio Frames & Gifts, a photography studio creating portraits, weddings, family stories and keepsake prints in Tirupathur.', ogImage: '' },
-      '/services': { title: 'Photography Services | KK Digital Studio Frames & Gifts', description: 'Wedding, pre-wedding, portrait, family, event, product and passport photography, plus printing, framing and album design.', ogImage: '' },
-      '/portfolio': { title: 'Portfolio | KK Digital Studio Frames & Gifts', description: 'Browse our photography portfolio across weddings, portraits, families and events.', ogImage: '' },
-      '/packages': { title: 'Photography Packages | KK Digital Studio Frames & Gifts', description: 'Explore photography packages from KK Digital Studio Frames & Gifts and enquire for a tailored quote.', ogImage: '' },
-      '/photo-frames': { title: 'Photo Frames & Keepsakes | KK Digital Studio Frames & Gifts', description: 'Custom photo frames, wall collage frames, heart plaques and LED photo lamps in Oak, Acrylic and Metal finishes.', ogImage: '' },
-      '/booking': { title: 'Book a Session | KK Digital Studio Frames & Gifts', description: 'Request your photography session with KK Digital Studio Frames & Gifts. We will confirm your booking personally.', ogImage: '' },
-      '/contact': { title: 'Contact & Location | KK Digital Studio Frames & Gifts', description: 'Visit KK Digital Studio Frames & Gifts in Achamangalam, Tirupathur, Tamil Nadu 635651, India. Call, WhatsApp or send an enquiry.', ogImage: '' },
+      ...DEFAULT_SEO_PAGES,
       '/cart': { title: 'Your Cart | KK Digital Studio', description: 'Review your photo frame order.', ogImage: '' },
       '/checkout': { title: 'Checkout | KK Digital Studio', description: 'Complete your photo frame order.', ogImage: '' },
     },

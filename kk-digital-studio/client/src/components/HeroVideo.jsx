@@ -38,7 +38,7 @@ export default function HeroVideo({ hero, ctas }) {
   return (
     <section className="hero" aria-label="Welcome">
       <ProtectedMedia className={`hero__media ${ready ? 'is-ready' : ''}`}>
-        {poster && <img className="hero__poster" src={poster} alt="" draggable={false} />}
+        {poster && <img className="hero__poster" src={poster} alt="" fetchPriority="high" decoding="async" draggable={false} />}
         {showVideo && (
           <video
             key={src}
