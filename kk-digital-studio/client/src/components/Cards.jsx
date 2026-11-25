@@ -15,9 +15,12 @@ export const serviceIcon = (title = '') => {
 };
 
 export function ServiceCard({ service, delay = 0 }) {
+  const bookingPath = service.isLocalFallback || !service.id
+    ? '/booking'
+    : `/booking?service=${encodeURIComponent(service.id)}`;
   return (
     <Reveal delay={delay} className="card service-card">
-      <Link to={`/booking?service=${service.id}`} className="service-card__media" aria-label={`Book ${service.title}`}>
+      <Link to={bookingPath} className="service-card__media" aria-label={`Book ${service.title}`}>
         <Img src={service.image} alt={service.image ? service.title : ''} ratio="4/5" width={640} icon={serviceIcon(service.title)} label={service.title} />
       </Link>
       <div className="service-card__body">

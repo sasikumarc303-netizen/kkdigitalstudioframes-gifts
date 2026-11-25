@@ -6,14 +6,23 @@ import { Btn } from '../components/Buttons.jsx';
 import { ServiceCard, ProductCard, PackageCard, TestimonialCard } from '../components/Cards.jsx';
 import { MasonryGallery, ContactBlock, Split } from '../components/Sections.jsx';
 import ProtectedMedia from '../components/ProtectedMedia.jsx';
-import { ErrorState, Skeleton } from '../components/States.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { api } from '../services/api.js';
 import { useSite } from '../context/SiteContext.jsx';
+import { getFallbackPackages, getFallbackServices } from '../../../public-content.mjs';
+
+const FALLBACK_HOME_DATA = {
+  services: getFallbackServices(),
+  products: [],
+  gallery: [],
+  packages: getFallbackPackages(),
+  testimonials: [],
+};
 
 export default function Home() {
   const { config, waLink } = useSite();
-  const { data, loading, error, reload } = useAsync(() => api.get('/home'), []);
+  const { data, error } = useAsync(() => api.get('/home'), []);
+  const publicData = data ?? FALLBACK_HOME_DATA;
   const hp = config.homepage;
   const s = hp.sections;
   const ctas = hp.ctas.filter((c) => c.visible !== false);
@@ -32,30 +41,35 @@ export default function Home() {
         />
       )}
 
-      {error && <section className="section"><div className="container"><ErrorState error={error} onRetry={reload} /></div></section>}
-      {loading && !data && (
-        <section className="section"><div className="container grid grid--3"><Skeleton h={360} /><Skeleton h={360} /><Skeleton h={360} /></div></section>
+      {error && !data && (
+        <section className="section">
+          <div className="container">
+            <p className="muted small" role="status">
+              Live portfolio and product listings could not be refreshed. Studio services and packages remain available below.
+            </p>
+          </div>
+        </section>
       )}
 
-      {data && (
+      {publicData && (
         <>
-          {s.services.visible && data.services.length > 0 && (
+          {s.services.visible && publicData.services.length > 0 && (
             <section className="section section--sand-soft">
               <div className="container">
                 <SectionHead eyebrow={s.services.eyebrow} title={s.services.title} subtitle={s.services.subtitle} />
                 <div className="grid grid--3">
-                  {data.services.map((svc, i) => <ServiceCard key={svc.id} service={svc} delay={(i % 3) * 0.08} />)}
+                  {publicData.services.map((svc, i) => <ServiceCard key={svc.id || svc.slug} service={svc} delay={(i % 3) * 0.08} />)}
                 </div>
                 <div className="section__more"><Btn to="/services" variant="outline" iconRight="arrow">All services</Btn></div>
               </div>
             </section>
           )}
 
-          {s.portfolio.visible && data.gallery.length > 0 && (
+          {s.portfolio.visible && publicData.gallery.length > 0 && (
             <section className="section section--ivory">
               <div className="container">
                 <SectionHead eyebrow={s.portfolio.eyebrow} title={s.portfolio.title} subtitle={s.portfolio.subtitle} />
-                <MasonryGallery items={data.gallery} />
+                <MasonryGallery items={publicData.gallery} />
                 <div className="section__more"><Btn to="/portfolio" variant="primary" iconRight="arrow">Explore portfolio</Btn></div>
               </div>
             </section>
@@ -63,24 +77,24 @@ export default function Home() {
 
           {s.experience.visible && <Experience section={s.experience} />}
 
-          {s.packages.visible && data.packages.length > 0 && (
+          {s.packages.visible && publicData.packages.length > 0 && (
             <section className="section section--white">
               <div className="container">
                 <SectionHead eyebrow={s.packages.eyebrow} title={s.packages.title} subtitle={s.packages.subtitle} />
                 <div className="grid grid--3 grid--align-stretch">
-                  {data.packages.map((p, i) => <PackageCard key={p.id} pkg={p} delay={i * 0.08} />)}
+                  {publicData.packages.map((p, i) => <PackageCard key={p.id} pkg={p} delay={i * 0.08} />)}
                 </div>
                 <div className="section__more"><Btn to="/packages" variant="outline" iconRight="arrow">Compare packages</Btn></div>
               </div>
             </section>
           )}
 
-          {s.frames.visible && data.products.length > 0 && (
+          {s.frames.visible && publicData.products.length > 0 && (
             <section className="section section--forest">
               <div className="container">
                 <SectionHead light eyebrow={s.frames.eyebrow} title={s.frames.title} subtitle={s.frames.subtitle} />
                 <div className="grid grid--4">
-                  {data.products.map((p, i) => <ProductCard key={p.id} product={p} delay={i * 0.07} />)}
+                  {publicData.products.map((p, i) => <ProductCard key={p.id} product={p} delay={i * 0.07} />)}
                 </div>
                 <div className="section__more"><Btn to="/photo-frames" variant="light" iconRight="arrow">Shop the collection</Btn></div>
               </div>
@@ -104,12 +118,12 @@ export default function Home() {
             </section>
           )}
 
-          {s.testimonials.visible && data.testimonials.length > 0 && (
+          {s.testimonials.visible && publicData.testimonials.length > 0 && (
             <section className="section section--sand-soft">
               <div className="container">
                 <SectionHead eyebrow={s.testimonials.eyebrow} title={s.testimonials.title} />
                 <div className="grid grid--3 grid--align-stretch">
-                  {data.testimonials.slice(0, 6).map((t, i) => <TestimonialCard key={t.id} t={t} delay={(i % 3) * 0.08} />)}
+                  {publicData.testimonials.slice(0, 6).map((t, i) => <TestimonialCard key={t.id} t={t} delay={(i % 3) * 0.08} />)}
                 </div>
               </div>
             </section>

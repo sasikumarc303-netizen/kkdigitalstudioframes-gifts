@@ -1,11 +1,25 @@
 
+const ENV = import.meta.env || {};
 const API_ORIGIN = (
-  import.meta.env.VITE_API_URL ||
+  ENV.VITE_API_URL ||
   'https://kk-digital-studio-backend.onrender.com'
 ).replace(/\/+$/, '').replace(/\/api$/i, '');
 
 const PROXY_BASE = '/api';
 const DIRECT_BASE = `${API_ORIGIN}/api`;
+const REQUEST_TIMEOUT_MS = 30_000;
+const TRANSFER_TIMEOUT_MS = 120_000;
+
+function networkError(timedOut) {
+  const error = new Error(
+    timedOut
+      ? 'The server took too long to respond. Please try again.'
+      : 'Cannot reach the server. Please wait and try again.'
+  );
+  error.network = true;
+  error.timeout = timedOut;
+  return error;
+}
 
 export const qs = (params = {}) => {
   const p = new URLSearchParams();
@@ -20,7 +34,13 @@ export const qs = (params = {}) => {
   return s ? `?${s}` : '';
 };
 
-async function request(path, { method = 'GET', body, formData, responseType } = {}) {
+async function request(path, {
+  method = 'GET',
+  body,
+  formData,
+  responseType,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+} = {}) {
   const isAdmin = path.startsWith('/admin');
 
   const headers = {};
@@ -34,65 +54,76 @@ async function request(path, { method = 'GET', body, formData, responseType } = 
     headers['X-Requested-With'] = 'kk-admin';
   }
 
-  const base = import.meta.env.DEV ? PROXY_BASE : DIRECT_BASE;
-
+  const base = ENV.DEV ? PROXY_BASE : DIRECT_BASE;
+  const controller = new AbortController();
+  const timeoutId = timeoutMs > 0
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : null;
   let res;
 
   try {
-    res = await fetch(base + path, {
-      method,
-      headers,
-      credentials: isAdmin ? 'include' : 'omit',
-      body: formData || (
-        body !== undefined ? JSON.stringify(body) : undefined
-      ),
-    });
-  } catch {
-    const err = new Error(
-      'Cannot reach the server. Please wait and try again.'
-    );
-    err.network = true;
-    throw err;
-  }
-
-  let data = null;
-
-  if (res.ok && responseType === 'blob') return res.blob();
-
-  try {
-    data = await res.json();
-  } catch {
-    // Empty or non-JSON response.
-  }
-
-  if (!res.ok) {
-    const err = new Error(
-      data?.message || `Request failed (${res.status})`
-    );
-
-    err.status = res.status;
-    err.errors = data?.errors || {};
-
-    if (
-      res.status === 401 &&
-      isAdmin &&
-      !path.startsWith('/admin/auth/login')
-    ) {
-      window.dispatchEvent(
-        new CustomEvent('kk:unauthorized')
-      );
+    try {
+      res = await fetch(base + path, {
+        method,
+        headers,
+        credentials: isAdmin ? 'include' : 'omit',
+        body: formData || (
+          body !== undefined ? JSON.stringify(body) : undefined
+        ),
+        signal: controller.signal,
+      });
+    } catch {
+      throw networkError(controller.signal.aborted);
     }
 
-    throw err;
-  }
+    let data = null;
 
-  return data;
+    if (res.ok && responseType === 'blob') {
+      try {
+        return await res.blob();
+      } catch {
+        throw networkError(controller.signal.aborted);
+      }
+    }
+
+    try {
+      data = await res.json();
+    } catch {
+      if (controller.signal.aborted) throw networkError(true);
+      // Empty or non-JSON response.
+    }
+
+    if (!res.ok) {
+      const err = new Error(
+        data?.message || `Request failed (${res.status})`
+      );
+
+      err.status = res.status;
+      err.errors = data?.errors || {};
+
+      if (
+        res.status === 401 &&
+        isAdmin &&
+        !path.startsWith('/admin/auth/login')
+      ) {
+        window.dispatchEvent(
+          new CustomEvent('kk:unauthorized')
+        );
+      }
+
+      throw err;
+    }
+
+    return data;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 export const api = {
-  get: (p) => request(p),
-  post: (p, body) =>
-    request(p, { method: 'POST', body: body ?? {} }),
+  get: (p, options) => request(p, options),
+  post: (p, body, options) =>
+    request(p, { ...options, method: 'POST', body: body ?? {} }),
   put: (p, body) =>
     request(p, { method: 'PUT', body }),
   patch: (p, body) =>
@@ -100,7 +131,7 @@ export const api = {
   del: (p) =>
     request(p, { method: 'DELETE' }),
   upload: (p, formData) =>
-    request(p, { method: 'POST', formData }),
+    request(p, { method: 'POST', formData, timeoutMs: TRANSFER_TIMEOUT_MS }),
   download: (p) =>
-    request(p, { responseType: 'blob' }),
+    request(p, { responseType: 'blob', timeoutMs: TRANSFER_TIMEOUT_MS }),
 };
