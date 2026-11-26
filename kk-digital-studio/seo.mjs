@@ -5,6 +5,7 @@ export const BACKEND_ROBOTS_TXT = [
   'Allow: /',
   'Allow: /api/home$',
   'Allow: /api/site$',
+  'Allow: /api/media/previews/b2?',
   'Disallow: /api/',
   `Sitemap: ${SEO_ORIGIN}/sitemap.xml`,
 ].join('\n');

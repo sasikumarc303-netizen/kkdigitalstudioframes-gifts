@@ -23,6 +23,7 @@ test('backend robots.txt returns the fixed API allowlist as plain text with HTTP
       'Allow: /',
       'Allow: /api/home$',
       'Allow: /api/site$',
+      'Allow: /api/media/previews/b2?',
       'Disallow: /api/',
       'Sitemap: https://kkdigitalstudioframes.com/sitemap.xml',
     ]);
