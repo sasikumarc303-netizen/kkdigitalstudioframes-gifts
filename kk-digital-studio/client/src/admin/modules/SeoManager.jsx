@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useConfigGroup } from '../hooks/useConfigGroup.js';
 import { ImageField } from '../components/MediaPicker.jsx';
 import { Card, ErrorBox, Loading, PageHeader, SaveBar, SelectField, TextArea, TextField } from '../components/ui.jsx';
+import { BACKEND_ROBOTS_TXT } from '../../../../seo.mjs';
 
 const LABELS = { '/': 'Home', '/about': 'About', '/services': 'Services', '/portfolio': 'Portfolio', '/packages': 'Packages', '/photo-frames': 'Photo frames', '/booking': 'Booking', '/contact': 'Contact', '/cart': 'Cart', '/checkout': 'Checkout' };
 
@@ -40,7 +41,7 @@ export default function SeoManager() {
         <ImageField label="Default share image" value={d.defaultOgImage} onChange={(v) => g.set('defaultOgImage', v)} folder="seo" hint="Recommended 1200×630." />
       </Card>
       <Card title="robots.txt">
-        <TextArea label="Custom robots.txt (optional)" rows={6} value={d.robotsTxt} onChange={(v) => g.set('robotsTxt', v)} hint="Leave blank to use the default, which allows search engines and hides /admin and /api. Your sitemap is generated automatically at /sitemap.xml." />
+        <TextArea label="Backend robots.txt (managed)" rows={6} value={BACKEND_ROBOTS_TXT} onChange={() => {}} readOnly hint="The backend publishes this fixed policy. Only /api/home and /api/site are crawlable under /api; custom saved robots.txt values do not override it." />
       </Card>
       <SaveBar dirty={g.dirty} saving={g.saving} onSave={() => g.save()} onReset={g.reset} error={g.saveError} />
     </>

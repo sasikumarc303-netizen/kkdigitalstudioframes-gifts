@@ -1,5 +1,14 @@
 export const SEO_ORIGIN = 'https://kkdigitalstudioframes.com';
 
+export const BACKEND_ROBOTS_TXT = [
+  'User-agent: *',
+  'Allow: /',
+  'Allow: /api/home$',
+  'Allow: /api/site$',
+  'Disallow: /api/',
+  `Sitemap: ${SEO_ORIGIN}/sitemap.xml`,
+].join('\n');
+
 export const BUSINESS_NAME = 'KK Digital Studio Frames & Gifts';
 export const BUSINESS_PHONE = '+91 97888 89966';
 export const BUSINESS_ADDRESS = Object.freeze({
