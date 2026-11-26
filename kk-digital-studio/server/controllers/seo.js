@@ -1,7 +1,6 @@
 import Product from '../models/Product.js';
 import { asyncHandler } from '../utils/helpers.js';
-import { getConfig } from '../services/siteConfig.js';
-import { SEO_ORIGIN } from '../../seo.mjs';
+import { BACKEND_ROBOTS_TXT, SEO_ORIGIN } from '../../seo.mjs';
 
 const STATIC_ROUTES = [
   ['/', 1.0], ['/about', 0.7], ['/services', 0.9], ['/portfolio', 0.9], ['/packages', 0.8],
@@ -19,12 +18,5 @@ export const sitemap = asyncHandler(async (_req, res) => {
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
 });
 
-export const robots = asyncHandler(async (_req, res) => {
-  const cfg = await getConfig();
-  let body = cfg.seo.robotsTxt?.trim();
-  if (!body) {
-    body = 'User-agent: *\nAllow: /\nDisallow: /api/';
-  }
-  if (!/^sitemap:/im.test(body)) body += `\nSitemap: ${SEO_ORIGIN}/sitemap.xml`;
-  res.type('text/plain').send(`${body}\n`);
-});
+export const robots = (_req, res) =>
+  res.status(200).type('text/plain').send(`${BACKEND_ROBOTS_TXT}\n`);
