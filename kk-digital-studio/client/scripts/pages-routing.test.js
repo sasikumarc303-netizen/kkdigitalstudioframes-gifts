@@ -41,3 +41,10 @@ test('admin SPA routes remain noindex and genuine unknown routes keep the custom
   assert.deepEqual(functionRoutes.include, ['/sitemap.xml', '/photo-frames/*']);
   assert.deepEqual(functionRoutes.exclude, []);
 });
+
+test('admin root redirects through the existing protected dashboard route', async () => {
+  const adminApp = await readFile(new URL('../src/admin/AdminApp.jsx', import.meta.url), 'utf8');
+
+  assert.match(adminApp, /<Route index element={<Navigate to="\/admin\/dashboard" replace \/>} \/>/);
+  assert.match(adminApp, /<Route element={<AdminLayout \/>}>[\s\S]*<Route path="dashboard" element={<Dashboard \/>} \/>/);
+});
