@@ -14,7 +14,9 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(scriptDir, '..');
 const projectDir = path.resolve(clientDir, '..');
 const distDir = path.join(clientDir, 'dist');
-const template = await readFile(path.join(distDir, 'index.html'), 'utf8');
+const template = (await readFile(path.join(distDir, 'index.html'), 'utf8'))
+  .replace(/<!--SEO_HEAD_START-->[\s\S]*?<!--SEO_HEAD_END-->/, '<!--SEO_HEAD-->')
+  .replace(/<!--SEO_BODY_START-->[\s\S]*?<!--SEO_BODY_END-->/, '');
 
 if (!template.includes('<!--SEO_HEAD-->')) {
   throw new Error('Production index.html is missing the SEO_HEAD marker.');
@@ -155,8 +157,11 @@ function renderPage(pathname, { title, description }) {
   ].join('\n    ');
   const html = template
     .replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`)
-    .replace('<!--SEO_HEAD-->', head)
-    .replace('<div id="root"></div>', `<div id="root">${renderPublicFallback(pathname)}</div>`);
+    .replace('<!--SEO_HEAD-->', `<!--SEO_HEAD_START-->${head}<!--SEO_HEAD_END-->`)
+    .replace(
+      '<div id="root"></div>',
+      `<div id="root"><!--SEO_BODY_START-->${renderPublicFallback(pathname)}<!--SEO_BODY_END--></div>`,
+    );
 
   return html;
 }
