@@ -53,6 +53,7 @@ export default function AdminApp() {
           <AdminHead />
           <Suspense fallback={<div className="a-boot"><Loading rows={3} /></div>}>
             <Routes>
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="login" element={<Login />} />
               <Route path="forgot-password" element={<Forgot />} />
               <Route path="reset-password" element={<Reset />} />
