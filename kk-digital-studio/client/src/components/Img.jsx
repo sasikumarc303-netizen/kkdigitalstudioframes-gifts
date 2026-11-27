@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import { optimizeImage } from '../services/format.js';
 
@@ -11,6 +11,15 @@ import { optimizeImage } from '../services/format.js';
 export default function Img({ src, alt = '', ratio, width, sizes, priority = false, icon = 'camera', label, className = '', imgClassName = '', onClick, ...rest }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const retryTimer = useRef(null);
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+    setRetryCount(0);
+    return () => clearTimeout(retryTimer.current);
+  }, [src]);
+
   const style = ratio ? { aspectRatio: ratio } : undefined;
   const showPlaceholder = !src || failed;
   const url = optimizeImage(src, width);
@@ -27,6 +36,7 @@ export default function Img({ src, alt = '', ratio, width, sizes, priority = fal
       ) : (
         <img
           className={imgClassName}
+          key={retryCount}
           src={url}
           srcSet={srcSet}
           sizes={srcSet ? sizes || '(max-width: 767px) 100vw, 50vw' : undefined}
@@ -35,7 +45,13 @@ export default function Img({ src, alt = '', ratio, width, sizes, priority = fal
           fetchPriority={priority ? 'high' : undefined}
           decoding="async"
           onLoad={() => setLoaded(true)}
-          onError={() => setFailed(true)}
+          onError={() => {
+            if (retryCount === 0) {
+              retryTimer.current = setTimeout(() => setRetryCount(1), 1000);
+            } else {
+              setFailed(true);
+            }
+          }}
         />
       )}
     </div>

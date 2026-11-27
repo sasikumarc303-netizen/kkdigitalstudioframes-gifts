@@ -1,6 +1,6 @@
 const API_ORIGIN = 'https://kk-digital-studio-backend.onrender.com';
 const SITE_ORIGIN = 'https://kkdigitalstudioframes.com';
-const PRODUCT_LOOKUP_TIMEOUT_MS = 10_000;
+const PRODUCT_LOOKUP_TIMEOUT_MS = 30_000;
 const PRODUCT_LOOKUP_ATTEMPTS = 2;
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({

@@ -9,6 +9,8 @@ const PROXY_BASE = '/api';
 const DIRECT_BASE = `${API_ORIGIN}/api`;
 const REQUEST_TIMEOUT_MS = 30_000;
 const TRANSFER_TIMEOUT_MS = 120_000;
+const GET_RETRY_DELAY_MS = 750;
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
 
 function networkError(timedOut) {
   const error = new Error(
@@ -120,8 +122,22 @@ async function request(path, {
   }
 }
 
+async function getWithRetry(path, options) {
+  const canRetry = !path.startsWith('/admin') && path !== '/site';
+
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await request(path, options);
+    } catch (error) {
+      const retryable = error?.network || RETRYABLE_STATUSES.has(error?.status);
+      if (!canRetry || attempt > 0 || !retryable) throw error;
+      await new Promise((resolve) => setTimeout(resolve, GET_RETRY_DELAY_MS));
+    }
+  }
+}
+
 export const api = {
-  get: (p, options) => request(p, options),
+  get: (p, options) => getWithRetry(p, options),
   post: (p, body, options) =>
     request(p, { ...options, method: 'POST', body: body ?? {} }),
   put: (p, body) =>

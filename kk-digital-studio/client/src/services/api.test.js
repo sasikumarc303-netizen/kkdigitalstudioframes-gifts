@@ -36,3 +36,57 @@ test('API requests still return parsed successful responses', async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test('public GET requests retry one transient network failure', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  try {
+    globalThis.fetch = async () => {
+      calls += 1;
+      if (calls === 1) throw new TypeError('connection reset');
+      return new Response(JSON.stringify([{ id: 'service-1' }]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+
+    assert.deepEqual(await api.get('/services'), [{ id: 'service-1' }]);
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('public GET retries transient server errors but not permanent errors or admin requests', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  try {
+    globalThis.fetch = async () => {
+      calls += 1;
+      if (calls === 1) {
+        return new Response(JSON.stringify({ message: 'Starting up' }), { status: 503 });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    };
+    assert.deepEqual(await api.get('/gallery'), { ok: true });
+    assert.equal(calls, 2);
+
+    calls = 0;
+    globalThis.fetch = async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ message: 'Not found' }), { status: 404 });
+    };
+    await assert.rejects(api.get('/products/missing'), (error) => error.status === 404);
+    assert.equal(calls, 1);
+
+    calls = 0;
+    globalThis.fetch = async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ message: 'Unavailable' }), { status: 503 });
+    };
+    await assert.rejects(api.get('/admin/config'), (error) => error.status === 503);
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

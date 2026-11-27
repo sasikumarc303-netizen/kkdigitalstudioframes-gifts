@@ -13,6 +13,7 @@ import adminRoutes from './routes/admin.js';
 import { sitemap, robots } from './controllers/seo.js';
 import { errorHandler, notFoundApi } from './middleware/errors.js';
 import { corsMiddleware } from './middleware/cors.js';
+import { publicContentCache } from './middleware/publicContentCache.js';
 import { getMediaStorageProvider, PUBLIC_MEDIA_ROOT } from './services/media.js';
 import { getConfig, ensureConfigExists } from './services/siteConfig.js';
 import { startOrderNotificationWorker } from './services/orderNotifications.js';
@@ -63,6 +64,7 @@ app.use('/api', (req, res, next) => {
   }
   next();
 });
+app.use('/api', publicContentCache);
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, db: mongoose.connection.readyState === 1 }));
 app.use('/api/media/previews', express.static(PUBLIC_MEDIA_ROOT, {

@@ -1,7 +1,7 @@
 import { DEFAULT_CONFIG } from '../../../server/services/defaults.js';
 
 const MAX_ATTEMPTS = 2;
-export const SITE_CONFIG_TIMEOUT_MS = 10_000;
+export const SITE_CONFIG_TIMEOUT_MS = 30_000;
 
 const isRetryable = (error) =>
   error?.network === true ||
