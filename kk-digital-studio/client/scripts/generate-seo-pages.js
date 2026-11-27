@@ -287,21 +287,24 @@ const redirects = (await readFile(path.join(distDir, '_redirects'), 'utf8'))
   .filter((line) => line && !line.startsWith('#'))
   .map((line) => line.replace(/\s+/g, ' '));
 const requiredSpaRoutes = [
-  '/admin /index.html 200',
-  '/admin/* /index.html 200',
-  '/cart /index.html 200',
-  '/checkout /index.html 200',
-  '/orders /index.html 200',
-  '/track-order /index.html 200',
-  '/photo-frames/* /index.html 200',
+  '/admin / 200',
+  '/admin/* / 200',
+  '/cart / 200',
+  '/cart/ / 200',
+  '/checkout / 200',
+  '/checkout/ / 200',
+  '/orders / 200',
+  '/orders/ / 200',
+  '/track-order / 200',
+  '/track-order/ / 200',
+  '/photo-frames/* / 200',
 ];
 if (
-  redirects[0] !== '/api/* https://kk-digital-studio-backend.onrender.com/api/:splat 200' ||
   requiredSpaRoutes.some((route) => !redirects.includes(route)) ||
   redirects.some((line) => line.startsWith('/sitemap.xml ')) ||
-  redirects.some((line) => line.startsWith('/* /index.html'))
+  redirects.some((line) => line.startsWith('/* '))
 ) {
-  throw new Error('The sitemap must bypass redirects, and only known SPA routes may rewrite to index.html.');
+  throw new Error('The sitemap must bypass redirects, and only known SPA routes may rewrite to the app shell.');
 }
 const notFoundHtml = await readFile(path.join(distDir, '404.html'), 'utf8');
 if (
