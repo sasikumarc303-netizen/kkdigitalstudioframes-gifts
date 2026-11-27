@@ -14,7 +14,9 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(scriptDir, '..');
 const projectDir = path.resolve(clientDir, '..');
 const distDir = path.join(clientDir, 'dist');
-const template = await readFile(path.join(distDir, 'index.html'), 'utf8');
+const template = (await readFile(path.join(distDir, 'index.html'), 'utf8'))
+  .replace(/<!--SEO_HEAD_START-->[\s\S]*?<!--SEO_HEAD_END-->/, '<!--SEO_HEAD-->')
+  .replace(/<!--SEO_BODY_START-->[\s\S]*?<!--SEO_BODY_END-->/, '');
 
 if (!template.includes('<!--SEO_HEAD-->')) {
   throw new Error('Production index.html is missing the SEO_HEAD marker.');
@@ -155,8 +157,11 @@ function renderPage(pathname, { title, description }) {
   ].join('\n    ');
   const html = template
     .replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`)
-    .replace('<!--SEO_HEAD-->', head)
-    .replace('<div id="root"></div>', `<div id="root">${renderPublicFallback(pathname)}</div>`);
+    .replace('<!--SEO_HEAD-->', `<!--SEO_HEAD_START-->${head}<!--SEO_HEAD_END-->`)
+    .replace(
+      '<div id="root"></div>',
+      `<div id="root"><!--SEO_BODY_START-->${renderPublicFallback(pathname)}<!--SEO_BODY_END--></div>`,
+    );
 
   return html;
 }
@@ -287,21 +292,24 @@ const redirects = (await readFile(path.join(distDir, '_redirects'), 'utf8'))
   .filter((line) => line && !line.startsWith('#'))
   .map((line) => line.replace(/\s+/g, ' '));
 const requiredSpaRoutes = [
-  '/admin /index.html 200',
-  '/admin/* /index.html 200',
-  '/cart /index.html 200',
-  '/checkout /index.html 200',
-  '/orders /index.html 200',
-  '/track-order /index.html 200',
-  '/photo-frames/* /index.html 200',
+  '/admin / 200',
+  '/admin/* / 200',
+  '/cart / 200',
+  '/cart/ / 200',
+  '/checkout / 200',
+  '/checkout/ / 200',
+  '/orders / 200',
+  '/orders/ / 200',
+  '/track-order / 200',
+  '/track-order/ / 200',
+  '/photo-frames/* / 200',
 ];
 if (
-  redirects[0] !== '/api/* https://kk-digital-studio-backend.onrender.com/api/:splat 200' ||
   requiredSpaRoutes.some((route) => !redirects.includes(route)) ||
   redirects.some((line) => line.startsWith('/sitemap.xml ')) ||
-  redirects.some((line) => line.startsWith('/* /index.html'))
+  redirects.some((line) => line.startsWith('/* '))
 ) {
-  throw new Error('The sitemap must bypass redirects, and only known SPA routes may rewrite to index.html.');
+  throw new Error('The sitemap must bypass redirects, and only known SPA routes may rewrite to the app shell.');
 }
 const notFoundHtml = await readFile(path.join(distDir, '404.html'), 'utf8');
 if (
